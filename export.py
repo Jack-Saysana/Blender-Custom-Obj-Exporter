@@ -51,25 +51,26 @@ def write_data(filepath):
                     print("vn %f %f %f" % (polygon.normal[0], polygon.normal[1], polygon.normal[2]), file=obj_file)
 
             material = object.active_material
-            for link in material.node_tree.links:
-                #Look for current output material of object
-                if (link.to_node.bl_idname == 'ShaderNodeOutputMaterial' and link.to_node.is_active_output and link.to_socket == link.to_node.inputs[0]):
-                    print("newmtl %s" % (material.name), file=mtl_file)
-                    #Check if output material uses bsdf principled
-                    if (link.from_node.bl_idname == 'ShaderNodeBsdfPrincipled'):
-                        #Extract textures (if they exist) from bsdf principled
-                        for input in link.from_node.inputs:
-                            if (input.name == 'Base Color'):
-                                for l in material.node_tree.links:
-                                    if (l.to_socket == input and l.from_node.bl_idname == 'ShaderNodeTexImage'):
-                                        print("map_Kd %s" % (bpy.path.basename(l.from_node.image.filepath)), file=mtl_file)
-                                        break
-                            elif (input.name == 'Specular'):
-                                for l in material.node_tree.links:
-                                    if (l.to_socket == input and l.from_node.bl_idname == 'ShaderNodeTexImage'):
-                                        print("map_Ks %s" % (bpy.path.basename(l.from_node.image.filepath)), file=mtl_file)
-                                        break
-                break
+            if material is not None:
+                for link in material.node_tree.links:
+                    #Look for current output material of object
+                    if (link.to_node.bl_idname == 'ShaderNodeOutputMaterial' and link.to_node.is_active_output and link.to_socket == link.to_node.inputs[0]):
+                        print("newmtl %s" % (material.name), file=mtl_file)
+                        #Check if output material uses bsdf principled
+                        if (link.from_node.bl_idname == 'ShaderNodeBsdfPrincipled'):
+                            #Extract textures (if they exist) from bsdf principled
+                            for input in link.from_node.inputs:
+                                if (input.name == 'Base Color'):
+                                    for l in material.node_tree.links:
+                                        if (l.to_socket == input and l.from_node.bl_idname == 'ShaderNodeTexImage'):
+                                            print("map_Kd %s" % (bpy.path.basename(l.from_node.image.filepath)), file=mtl_file)
+                                            break
+                                elif (input.name == 'Specular'):
+                                    for l in material.node_tree.links:
+                                        if (l.to_socket == input and l.from_node.bl_idname == 'ShaderNodeTexImage'):
+                                            print("map_Ks %s" % (bpy.path.basename(l.from_node.image.filepath)), file=mtl_file)
+                                            break
+                    break
             
             
             print("usemtl %s" % (material.name), file=obj_file)
