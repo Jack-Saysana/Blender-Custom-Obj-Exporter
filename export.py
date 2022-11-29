@@ -27,19 +27,59 @@ def get_index(arr, target, size):
             return i
     return -1
 
+def compare_group(group):
+    return group.weight
+
+bones = []
+def traverse_tree(bone, level, file):
+    for i in range(0, level):
+        print(" ", end="")
+    print("b %f %f %f %d" %(bone.tail[0], bone.tail[1], bone.tail[2], len(bone.children), file=file))
+    bones.append(bone.name)
+    for child in bone.children:
+        traverse_tree(child, level + 1, file)
+
 def write_data(filepath):
     obj_file = open(filepath, 'w', encoding='utf-8')
     mtl_file = open(filepath[0:-4] + ".mtl", 'w', encoding='utf-8')
     
     print("mtllib %s.mtl" % bpy.path.basename(filepath[0:-4]), file=obj_file)
     for object in bpy.data.objects:
+        if object.type == 'ARMATURE':
+            for bone in object.bones:
+                if bone.parent == None:
+                    traverse_tree(bone, 0, obj_file)
         if object.type == 'MESH':
             mesh_data = object.data
             normals = []
             uvs = []
             print("o %s" % (object.name), file=obj_file)
             for vertex in mesh_data.vertices:
-                print("v %f %f %f" % (vertex.co[0], vertex.co[1], vertex.co[2]), file=obj_file)
+                groups = []
+                for group in vertex.groups:
+                    groups.append(group)
+                groups.sort(key=compare_group, reverse=True)
+                
+                used = []
+                for i in range(0, 4):
+                    if i < len(groups):
+                        used.append(groups[i])
+                    else:
+                        used.append(-1)
+                        
+                print("v %f %f %f " % (vertex.co[0], vertex.co[1], vertex.co[2]), end = "", file=obj_file)
+                for i in range(0, len(used)):
+                    if (i < len(used) - 1):
+                        if (used[i] != -1):
+                            print("%d:%f" % (bones.index(group_list[used[i].group].name) + 1, used[i].weight), end=" ", file=obj_file)
+                        else:
+                            print("-1:-1.0", end=" ", file=obj_file)
+                    else:
+                        if (used[i] != -1):
+                            print("%d:%f" % (bones.index(group_list[used[i].group].name) + 1, used[i].weight), end="\n", file=obj_file)
+                        else:
+                            print("-1:-1.0", end="\n", file=obj_file)
+#                print("v %f %f %f" % (vertex.co[0], vertex.co[1], vertex.co[2]), file=obj_file)
             for uv in mesh_data.uv_layers.active.data:
                 if exists(uvs, uv.uv, 2) == False:
                     uvs.append(uv.uv)
@@ -71,9 +111,8 @@ def write_data(filepath):
                                             print("map_Ks %s" % (bpy.path.basename(l.from_node.image.filepath)), file=mtl_file)
                                             break
                     break
-            
-            
-            print("usemtl %s" % (material.name), file=obj_file)
+                print("usemtl %s" % (material.name), file=obj_file)
+                
             for polygon in mesh_data.polygons:
                 print("f", end =" ", file=obj_file)
                 for index in range(polygon.loop_start, polygon.loop_start + polygon.loop_total):
