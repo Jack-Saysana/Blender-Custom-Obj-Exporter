@@ -34,7 +34,7 @@ bones = []
 def traverse_tree(bone, level, obj_file):
     for i in range(0, level):
         print(" ", end="")
-    print("b %f %f %f %d" %(bone.tail[0], bone.tail[1], bone.tail[2], len(bone.children)), file=obj_file)
+    print("b %f %f %f %d" %(bone.head_local[0], bone.head_local[1], bone.head_local[2], len(bone.children)), file=obj_file)
     bones.append(bone.name)
     for child in bone.children:
         traverse_tree(child, level + 1, obj_file)
