@@ -122,6 +122,36 @@ def write_data(filepath):
                     else:
                         print("%d/%d/%d" % (mesh_data.loops[index].vertex_index + 1, get_index(uvs, mesh_data.uv_layers.active.data[index].uv, 2) + 1, get_index(normals, polygon.normal, 3) + 1), end ="", file=obj_file)
                 print("", file=obj_file)
+
+    for action in bpy.data.actions:
+        action_bones = {}
+        for fcurve in action.fcurves:
+            fcurve_data = fcurve.data_path.split("[\"")[1].split("\"]")
+            if fcurve_data[0] not in action_bones:
+                action_bones[fcurve_data[0]] = {}
+                    
+            for point in fcurve.keyframe_points:
+                if str(point.co[0]) not in action_bones[fcurve_data[0]]:
+                    action_bones[fcurve_data[0]][str(point.co[0])] = {}
+                if fcurve_data[1] not in action_bones[fcurve_data[0]][str(point.co[0])]:
+                    if fcurve_data[1] == ".rotation_quaternion":
+                        action_bones[fcurve_data[0]][str(point.co[0])][fcurve_data[1]] = [ 0.0, 0.0, 0.0, 0.0 ]
+                    else:
+                        action_bones[fcurve_data[0]][str(point.co[0])][fcurve_data[1]] = [ 0.0, 0.0, 0.0 ]
+                action_bones[fcurve_data[0]][str(point.co[0])][fcurve_data[1]][fcurve.array_index] = point.co[1]
+        
+        print("a %s" % (action.name), file=obj_file)
+        for bone in action_bones:
+            bone_id = bones.index(bone)
+            for frame in action_bones[bone]:
+                for attrib in action_bones[bone][frame]:
+                    offset = action_bones[bone][frame][attrib]
+                    if attrib == ".location":
+                        print("l %d %d %f %f %f" % (bone_id, float(frame), offset[0], offset[1], offset[2]), file=obj_file)
+                    elif attrib == ".rotation_quaternion":
+                        print("r %d %d %f %f %f %f" % (bone_id, float(frame), offset[0], offset[1], offset[2], offset[3]), file=obj_file)
+                    else:
+                        print("s %d %d %f %f %f" % (bone_id, float(frame), offset[0], offset[1], offset[2]), file=obj_file)
     obj_file.close()
     mtl_file.close()
 
