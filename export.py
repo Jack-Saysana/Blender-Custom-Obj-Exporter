@@ -124,34 +124,38 @@ def write_data(filepath):
                 print("", file=obj_file)
 
     for action in bpy.data.actions:
-        action_bones = {}
+        keyframe_chains = {}
         for fcurve in action.fcurves:
             fcurve_data = fcurve.data_path.split("[\"")[1].split("\"]")
-            if fcurve_data[0] not in action_bones:
-                action_bones[fcurve_data[0]] = {}
-                    
             for point in fcurve.keyframe_points:
-                if str(point.co[0]) not in action_bones[fcurve_data[0]]:
-                    action_bones[fcurve_data[0]][str(point.co[0])] = {}
-                if fcurve_data[1] not in action_bones[fcurve_data[0]][str(point.co[0])]:
+                chain_id = fcurve_data[0] + "\n" + fcurve_data[1]
+                if chain_id not in keyframe_chains:
+                    keyframe_chains[chain_id] = { "frame":point.co[0], "queue":{} }
+                if str(point.co[0]) not in keyframe_chains[chain_id]["queue"]:
                     if fcurve_data[1] == ".rotation_quaternion":
-                        action_bones[fcurve_data[0]][str(point.co[0])][fcurve_data[1]] = [ 0.0, 0.0, 0.0, 0.0 ]
+                        keyframe_chains[chain_id]["queue"][str(point.co[0])] = [ 0.0, 0.0, 0.0, 0.0 ]
                     else:
-                        action_bones[fcurve_data[0]][str(point.co[0])][fcurve_data[1]] = [ 0.0, 0.0, 0.0 ]
-                action_bones[fcurve_data[0]][str(point.co[0])][fcurve_data[1]][fcurve.array_index] = point.co[1]
-        
+                        keyframe_chains[chain_id]["queue"][str(point.co[0])] = [ 0.0, 0.0, 0.0 ]
+
+                keyframe_chains[chain_id]["queue"][str(point.co[0])][fcurve.array_index] = point.co[1]
+                
         print("a %s" % (action.name), file=obj_file)
-        for bone in action_bones:
-            bone_id = bones.index(bone)
-            for frame in action_bones[bone]:
-                for attrib in action_bones[bone][frame]:
-                    offset = action_bones[bone][frame][attrib]
-                    if attrib == ".location":
-                        print("l %d %d %f %f %f" % (bone_id, float(frame), offset[0], offset[1], offset[2]), file=obj_file)
-                    elif attrib == ".rotation_quaternion":
-                        print("r %d %d %f %f %f %f" % (bone_id, float(frame), offset[0], offset[1], offset[2], offset[3]), file=obj_file)
-                    else:
-                        print("s %d %d %f %f %f" % (bone_id, float(frame), offset[0], offset[1], offset[2]), file=obj_file)
+        for chain_id in keyframe_chains:
+            chain_data = chain_id.split("\n")
+            if chain_data[1] == ".location":
+                print("cl %d" % (bones.index(chain_data[0])), file=obj_file)
+            elif chain_data[1] == ".rotation_quaternion":
+                print("cr %d" % (bones.index(chain_data[0])), file=obj_file)
+            elif chain_data[1] == ".scale":
+                print("cs %d" % (bones.index(chain_data[0])), file=obj_file)
+
+            for keyframe in keyframe_chains[chain_id]["queue"]:
+                offset = keyframe_chains[chain_id]["queue"][keyframe]
+                if chain_data[1] == "rotation_quaternion":
+                    print("kp %d %f %f %f %f" % (int(float(keyframe)), offset[0], offset[1], offset[2], offset[3]), file=obj_file)
+                else:
+                    print("kp %d %f %f %f" % (int(float(keyframe)), offset[0], offset[1], offset[2]), file=obj_file)
+
     obj_file.close()
     mtl_file.close()
 
