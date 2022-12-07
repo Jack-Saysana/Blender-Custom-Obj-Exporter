@@ -31,13 +31,12 @@ def compare_group(group):
     return group.weight
 
 bones = []
-def traverse_tree(bone, level, obj_file):
-    for i in range(0, level):
-        print(" ", end="")
-    print("b %f %f %f %d" %(bone.head_local[0], bone.head_local[1], bone.head_local[2], len(bone.children)), file=obj_file)
+def traverse_tree(world_mat, bone, level, obj_file):
+    world_coords = world_mat @ bone.head_local
+    print("b %f %f %f %d" %(world_coords[0], world_coords[1], world_coords[2], len(bone.children)), file=obj_file)
     bones.append(bone.name)
     for child in bone.children:
-        traverse_tree(child, level + 1, obj_file)
+        traverse_tree(world_mat, child, level + 1, obj_file)
 
 def write_data(filepath):
     obj_file = open(filepath, 'w', encoding='utf-8')
@@ -48,7 +47,7 @@ def write_data(filepath):
         if object.type == 'ARMATURE':
             for bone in object.data.bones:
                 if bone.parent == None:
-                    traverse_tree(bone, 0, obj_file)
+                    traverse_tree(object.matrix_world, bone, 0, obj_file)
         if object.type == 'MESH':
             mesh_data = object.data
             group_list = object.vertex_groups
@@ -151,7 +150,7 @@ def write_data(filepath):
 
             for keyframe in keyframe_chains[chain_id]["queue"]:
                 offset = keyframe_chains[chain_id]["queue"][keyframe]
-                if chain_data[1] == "rotation_quaternion":
+                if chain_data[1] == ".rotation_quaternion":
                     print("kp %d %f %f %f %f" % (int(float(keyframe)), offset[0], offset[1], offset[2], offset[3]), file=obj_file)
                 else:
                     print("kp %d %f %f %f" % (int(float(keyframe)), offset[0], offset[1], offset[2]), file=obj_file)
