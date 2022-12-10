@@ -31,14 +31,20 @@ def compare_group(group):
     return group.weight
 
 bones = []
-def traverse_tree(world_mat, bone, level, obj_file):
+next_id = -1
+def traverse_tree(world_mat, bone, parent_id, level, obj_file):
     world_coords = world_mat @ bone.head_local
-    print("b %f %f %f %d" %(world_coords[0], world_coords[1], world_coords[2], len(bone.children)), file=obj_file)
+    global next_id
+    next_id += 1
+    cur_id = next_id
+    print("b %f %f %f %d %d" %(world_coords[0], world_coords[1], world_coords[2], parent_id, len(bone.children)), file=obj_file)
     bones.append(bone.name)
     for child in bone.children:
-        traverse_tree(world_mat, child, level + 1, obj_file)
+        traverse_tree(world_mat, child, cur_id, level + 1, obj_file)
 
 def write_data(filepath):
+    global next_id
+    next_id = -1
     obj_file = open(filepath, 'w', encoding='utf-8')
     mtl_file = open(filepath[0:-4] + ".mtl", 'w', encoding='utf-8')
     
@@ -47,7 +53,7 @@ def write_data(filepath):
         if object.type == 'ARMATURE':
             for bone in object.data.bones:
                 if bone.parent == None:
-                    traverse_tree(object.matrix_world, bone, 0, obj_file)
+                    traverse_tree(object.matrix_world, bone, next_id, 0, obj_file)
         if object.type == 'MESH':
             mesh_data = object.data
             group_list = object.vertex_groups
@@ -161,7 +167,7 @@ def write_data(filepath):
     return {'FINISHED'}
 
 class ExportRiggedObj(Operator, ExportHelper):
-    """This appears in the tooltip of the operator and in the generated docs"""
+    """Save a Wavefront OBJ file with rigging and animation data"""
     bl_idname = "rigged_obj.export"  # important since its how bpy.ops.import_test.some_data is constructed
     bl_label = "Export OBJ"
 
