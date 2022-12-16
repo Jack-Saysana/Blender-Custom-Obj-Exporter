@@ -37,7 +37,7 @@ def traverse_tree(world_mat, bone, parent_id, level, obj_file):
     global next_id
     next_id += 1
     cur_id = next_id
-    print("b %f %f %f %d %d" %(world_coords[0], world_coords[1], world_coords[2], parent_id, len(bone.children)), file=obj_file)
+    print("b %f %f %f %d %d" %(world_coords[0], world_coords[2], world_coords[1], parent_id, len(bone.children)), file=obj_file)
     bones.append(bone.name)
     for child in bone.children:
         traverse_tree(world_mat, child, cur_id, level + 1, obj_file)
@@ -73,7 +73,7 @@ def write_data(filepath):
                     else:
                         used.append(-1)
                         
-                print("v %f %f %f " % (vertex.co[0], vertex.co[1], vertex.co[2]), end = "", file=obj_file)
+                print("v %f %f %f " % (vertex.co[0], vertex.co[2], vertex.co[1]), end = "", file=obj_file)
                 for i in range(0, len(used)):
                     if (i < len(used) - 1):
                         if (used[i] != -1):
@@ -94,7 +94,7 @@ def write_data(filepath):
             for polygon in mesh_data.polygons:
                 if exists(normals, polygon.normal, 3) == False:
                     normals.append(polygon.normal)
-                    print("vn %f %f %f" % (polygon.normal[0], polygon.normal[1], polygon.normal[2]), file=obj_file)
+                    print("vn %f %f %f" % (polygon.normal[0], polygon.normal[2], polygon.normal[1]), file=obj_file)
 
             material = object.active_material
             if material is not None:
@@ -157,7 +157,7 @@ def write_data(filepath):
             for keyframe in keyframe_chains[chain_id]["queue"]:
                 offset = keyframe_chains[chain_id]["queue"][keyframe]
                 if chain_data[1] == ".rotation_quaternion":
-                    print("kp %d %f %f %f %f" % (int(float(keyframe)), offset[0], offset[1], offset[2], offset[3]), file=obj_file)
+                    print("kp %d %f %f %f %f" % (int(float(keyframe)), offset[1], offset[2], offset[3], offset[0]), file=obj_file)
                 else:
                     print("kp %d %f %f %f" % (int(float(keyframe)), offset[0], offset[1], offset[2]), file=obj_file)
 
