@@ -144,7 +144,7 @@ def write_data(filepath):
 
                 keyframe_chains[chain_id]["queue"][str(point.co[0])][fcurve.array_index] = point.co[1]
                 
-        print("a %s" % (action.name), file=obj_file)
+        print("a %d" % (action.frame_range[1] - action.frame_range[0] + 1), file=obj_file)
         for chain_id in keyframe_chains:
             chain_data = chain_id.split("\n")
             if chain_data[1] == ".location":
