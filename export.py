@@ -53,7 +53,7 @@ def write_data(filepath):
         if object.type == 'ARMATURE':
             for bone in object.data.bones:
                 if bone.parent == None:
-                    traverse_tree(object.matrix_world, bone, next_id, 0, obj_file)
+                    traverse_tree(object.matrix_world, bone, -1, 0, obj_file)
         if object.type == 'MESH':
             mesh_data = object.data
             group_list = object.vertex_groups
@@ -73,7 +73,8 @@ def write_data(filepath):
                     else:
                         used.append(-1)
                         
-                print("v %f %f %f " % (vertex.co[0], vertex.co[2], vertex.co[1]), end = "", file=obj_file)
+                world_coords = object.matrix_world @ vertex.co
+                print("v %f %f %f " % (world_coords[0], world_coords[2], world_coords[1]), end = "", file=obj_file)
                 for i in range(0, len(used)):
                     if (i < len(used) - 1):
                         if (used[i] != -1):
@@ -146,8 +147,11 @@ def write_data(filepath):
                 
         print("a %d" % (action.frame_range[1] - action.frame_range[0] + 1), file=obj_file)
         for chain_id in keyframe_chains:
+            y_multiplier = 1.0
             chain_data = chain_id.split("\n")
             if chain_data[1] == ".location":
+                if (bpy.data.armatures[0].bones[chain_data[0]].vector[2] < 0.0):
+                    y_multiplier = -1.0
                 print("cl %d" % (bones.index(chain_data[0])), file=obj_file)
             elif chain_data[1] == ".rotation_quaternion":
                 print("cr %d" % (bones.index(chain_data[0])), file=obj_file)
@@ -159,7 +163,7 @@ def write_data(filepath):
                 if chain_data[1] == ".rotation_quaternion":
                     print("kp %d %f %f %f %f" % (int(float(keyframe)), offset[1], offset[2], offset[3], offset[0]), file=obj_file)
                 else:
-                    print("kp %d %f %f %f" % (int(float(keyframe)), offset[0], offset[1], offset[2]), file=obj_file)
+                    print("kp %d %f %f %f" % (int(float(keyframe)), offset[0], offset[1] * y_multiplier, offset[2]), file=obj_file)
 
     obj_file.close()
     mtl_file.close()
