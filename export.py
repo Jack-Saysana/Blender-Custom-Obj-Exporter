@@ -37,7 +37,8 @@ def traverse_tree(world_mat, bone, parent_id, level, obj_file):
     global next_id
     next_id += 1
     cur_id = next_id
-    print("b %f %f %f %d %d" %(world_coords[0], world_coords[2], world_coords[1], parent_id, len(bone.children)), file=obj_file)
+    print("# %s" % (bone.name), file=obj_file)
+    print("b %f %f %f %d %d\n" %(world_coords[0], world_coords[2], world_coords[1], parent_id, len(bone.children)), file=obj_file)
     bones.append(bone.name)
     for child in bone.children:
         traverse_tree(world_mat, child, cur_id, level + 1, obj_file)
@@ -145,6 +146,7 @@ def write_data(filepath):
 
                 keyframe_chains[chain_id]["queue"][str(point.co[0])][fcurve.array_index] = point.co[1]
                 
+        print("\n# %s" % (action.name), file=obj_file)
         print("a %d" % (action.frame_range[1] - action.frame_range[0] + 1), file=obj_file)
         for chain_id in keyframe_chains:
             y_multiplier = 1.0
@@ -161,7 +163,7 @@ def write_data(filepath):
             for keyframe in keyframe_chains[chain_id]["queue"]:
                 offset = keyframe_chains[chain_id]["queue"][keyframe]
                 if chain_data[1] == ".rotation_quaternion":
-                    print("kp %d %f %f %f %f" % (int(float(keyframe)), offset[1], offset[2], offset[3], offset[0]), file=obj_file)
+                    print("kp %d %f %f %f %f" % (int(float(keyframe)), offset[3], offset[2], offset[1], offset[0]), file=obj_file)
                 else:
                     print("kp %d %f %f %f" % (int(float(keyframe)), offset[0], offset[1] * y_multiplier, offset[2]), file=obj_file)
 
