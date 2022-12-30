@@ -1,4 +1,6 @@
 import bpy
+import mathutils
+import math
 # ExportHelper is a helper class, defines filename and
 # invoke() function which calls the file selector.
 from bpy_extras.io_utils import ExportHelper
@@ -38,7 +40,7 @@ def traverse_tree(world_mat, bone, parent_id, level, obj_file):
     next_id += 1
     cur_id = next_id
     print("# %s" % (bone.name), file=obj_file)
-    print("b %f %f %f %d %d\n" %(world_coords[0], world_coords[2], world_coords[1], parent_id, len(bone.children)), file=obj_file)
+    print("b %f %f %f %d %d\n" %(world_coords[1], world_coords[2], world_coords[0], parent_id, len(bone.children)), file=obj_file)
     bones.append(bone.name)
     for child in bone.children:
         traverse_tree(world_mat, child, cur_id, level + 1, obj_file)
@@ -75,7 +77,7 @@ def write_data(filepath):
                         used.append(-1)
                         
                 world_coords = object.matrix_world @ vertex.co
-                print("v %f %f %f " % (world_coords[0], world_coords[2], world_coords[1]), end = "", file=obj_file)
+                print("v %f %f %f " % (world_coords[1], world_coords[2], world_coords[0]), end = "", file=obj_file)
                 for i in range(0, len(used)):
                     if (i < len(used) - 1):
                         if (used[i] != -1):
@@ -87,7 +89,6 @@ def write_data(filepath):
                             print("%d:%f" % (bones.index(group_list[used[i].group].name), used[i].weight), end="\n", file=obj_file)
                         else:
                             print("-1:-1.0", end="\n", file=obj_file)
-#                print("v %f %f %f" % (vertex.co[0], vertex.co[1], vertex.co[2]), file=obj_file)
             for uv in mesh_data.uv_layers.active.data:
                 if exists(uvs, uv.uv, 2) == False:
                     uvs.append(uv.uv)
@@ -96,7 +97,7 @@ def write_data(filepath):
             for polygon in mesh_data.polygons:
                 if exists(normals, polygon.normal, 3) == False:
                     normals.append(polygon.normal)
-                    print("vn %f %f %f" % (polygon.normal[0], polygon.normal[2], polygon.normal[1]), file=obj_file)
+                    print("vn %f %f %f" % (polygon.normal[1], polygon.normal[2], polygon.normal[0]), file=obj_file)
 
             material = object.active_material
             if material is not None:
@@ -149,11 +150,9 @@ def write_data(filepath):
         print("\n# %s" % (action.name), file=obj_file)
         print("a %d" % (action.frame_range[1] - action.frame_range[0] + 1), file=obj_file)
         for chain_id in keyframe_chains:
-            y_multiplier = 1.0
             chain_data = chain_id.split("\n")
+            
             if chain_data[1] == ".location":
-                if (bpy.data.armatures[0].bones[chain_data[0]].vector[2] < 0.0):
-                    y_multiplier = -1.0
                 print("cl %d" % (bones.index(chain_data[0])), file=obj_file)
             elif chain_data[1] == ".rotation_quaternion":
                 print("cr %d" % (bones.index(chain_data[0])), file=obj_file)
@@ -162,10 +161,37 @@ def write_data(filepath):
 
             for keyframe in keyframe_chains[chain_id]["queue"]:
                 offset = keyframe_chains[chain_id]["queue"][keyframe]
+                
+                local_matrix = bpy.data.armatures[0].bones[chain_data[0]].matrix_local
+                local_point_mat = mathutils.Matrix([[local_matrix[0][0], local_matrix[0][1], local_matrix[0][2]], [local_matrix[1][0], local_matrix[1][1], local_matrix[1][2]], [local_matrix[2][0], local_matrix[2][1], local_matrix[2][2]]]).to_4x4()
+            
+                transformation_mat = mathutils.Matrix()
+                world_offset = [ -1.0, -1.0, -1.0, -1.0 ]
+                if chain_data[1] == ".location":
+                    transformation_mat = mathutils.Matrix([[1, 0, 0, offset[0]], [0, 1, 0, offset[1]], [0, 0, 1, offset[2]], [0, 0, 0, 1]]);
+                    world_mat = local_point_mat @ transformation_mat
+                    world_offset[0] = world_mat[0][3]
+                    world_offset[1] = world_mat[1][3]
+                    world_offset[2] = world_mat[2][3]
+                elif chain_data[1] == ".rotation_quaternion":
+                    local_offset_vector = mathutils.Vector((offset[1], offset[2], offset[3], 1))
+                    world_offset_vector = local_point_mat @ local_offset_vector
+                    
+                    world_offset[0] = offset[0]
+                    world_offset[1] = world_offset_vector[0]
+                    world_offset[2] = world_offset_vector[1]
+                    world_offset[3] = world_offset_vector[2]
+                elif chain_data[1] == ".scale":
+                    transformation_mat = mathutils.Matrix([[offset[0], 0, 0, 0], [0, offset[1], 0, 0], [0, 0, offset[2], 0], [0, 0, 0, 1]]);
+                    world_mat = local_point_mat @ transformation_mat
+                    world_offset[0] = world_mat[0][0]
+                    world_offset[1] = world_mat[1][1]
+                    world_offset[2] = world_mat[2][2]
+
                 if chain_data[1] == ".rotation_quaternion":
-                    print("kp %d %f %f %f %f" % (int(float(keyframe)), offset[3], offset[2], offset[1], offset[0]), file=obj_file)
+                    print("kp %d %f %f %f %f" % (int(float(keyframe)), world_offset[2], world_offset[3], world_offset[1], world_offset[0]), file=obj_file)
                 else:
-                    print("kp %d %f %f %f" % (int(float(keyframe)), offset[0], offset[1] * y_multiplier, offset[2]), file=obj_file)
+                    print("kp %d %f %f %f" % (int(float(keyframe)), world_offset[1], world_offset[2], world_offset[0]), file=obj_file)
 
     obj_file.close()
     mtl_file.close()
