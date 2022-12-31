@@ -152,6 +152,7 @@ def write_data(filepath):
         for chain_id in keyframe_chains:
             chain_data = chain_id.split("\n")
             
+            print("# %s" % (chain_data[0]), file=obj_file)
             if chain_data[1] == ".location":
                 print("cl %d" % (bones.index(chain_data[0])), file=obj_file)
             elif chain_data[1] == ".rotation_quaternion":
@@ -182,11 +183,11 @@ def write_data(filepath):
                     world_offset[2] = world_offset_vector[1]
                     world_offset[3] = world_offset_vector[2]
                 elif chain_data[1] == ".scale":
-                    transformation_mat = mathutils.Matrix([[offset[0], 0, 0, 0], [0, offset[1], 0, 0], [0, 0, offset[2], 0], [0, 0, 0, 1]]);
-                    world_mat = local_point_mat @ transformation_mat
-                    world_offset[0] = world_mat[0][0]
-                    world_offset[1] = world_mat[1][1]
-                    world_offset[2] = world_mat[2][2]
+                    world_offset_vector = local_point_mat @ mathutils.Vector((offset[0] - 1.0, offset[1] - 1.0, offset[2] - 1.0, 1.0))
+                    
+                    world_offset[0] = world_offset_vector[0] + 1.0
+                    world_offset[1] = world_offset_vector[1] + 1.0
+                    world_offset[2] = world_offset_vector[2] + 1.0
 
                 if chain_data[1] == ".rotation_quaternion":
                     print("kp %d %f %f %f %f" % (int(float(keyframe)), world_offset[2], world_offset[3], world_offset[1], world_offset[0]), file=obj_file)
