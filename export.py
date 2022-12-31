@@ -177,11 +177,12 @@ def write_data(filepath):
                 elif chain_data[1] == ".rotation_quaternion":
                     local_offset_vector = mathutils.Vector((offset[1], offset[2], offset[3], 1))
                     world_offset_vector = local_point_mat @ local_offset_vector
+                    world_quat = mathutils.Quaternion((offset[0], world_offset_vector[0], world_offset_vector[1], world_offset_vector[2])).normalized()
                     
-                    world_offset[0] = offset[0]
-                    world_offset[1] = world_offset_vector[0]
-                    world_offset[2] = world_offset_vector[1]
-                    world_offset[3] = world_offset_vector[2]
+                    world_offset[0] = world_quat.w
+                    world_offset[1] = world_quat.x
+                    world_offset[2] = world_quat.y
+                    world_offset[3] = world_quat.z
                 elif chain_data[1] == ".scale":
                     world_offset_vector = local_point_mat @ mathutils.Vector((offset[0] - 1.0, offset[1] - 1.0, offset[2] - 1.0, 1.0))
                     
