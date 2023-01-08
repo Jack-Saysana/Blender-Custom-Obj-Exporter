@@ -53,11 +53,17 @@ def write_data(filepath):
     
     print("mtllib %s.mtl" % bpy.path.basename(filepath[0:-4]), file=obj_file)
     for object in bpy.data.objects:
+        collections = object.users_collection
+        hit_box = False
+        for collection in collections:
+            if collection.name == "colliders":
+                hit_box = True
+                
         if object.type == 'ARMATURE':
             for bone in object.data.bones:
                 if bone.parent == None:
                     traverse_tree(object.matrix_world, bone, -1, 0, obj_file)
-        if object.type == 'MESH':
+        if object.type == 'MESH' and hit_box == False:
             mesh_data = object.data
             group_list = object.vertex_groups
             normals = []
@@ -130,6 +136,22 @@ def write_data(filepath):
                     else:
                         print("%d/%d/%d" % (mesh_data.loops[index].vertex_index + 1, get_index(uvs, mesh_data.uv_layers.active.data[index].uv, 2) + 1, get_index(normals, polygon.normal, 3) + 1), end ="", file=obj_file)
                 print("", file=obj_file)
+
+    print("", file=obj_file)
+    for collection in bpy.data.collections:
+        if collection.name == "colliders":
+            for object in collection.all_objects:
+                if object.type == 'MESH' and len(object.data.vertices) <= 8:
+                    vertices = object.data.vertices
+                    print("hb %d %d " % (bones.index(object.data.name), len(vertices)), end="", file=obj_file)
+                    for i in range(0, 8):
+                        world_coords = object.matrix_world @ vertices[i].co
+                        if i < 7:
+                            print("%f %f %f" % (world_coords[0], world_coords[1], world_coords[2]), end=" ", file=obj_file)
+                        elif len(vertices) == 8:
+                            print("%f %f %f" % (world_coords[0], world_coords[1], world_coords[2]), end="\n", file=obj_file)
+                        else:
+                            print("0.0, 0.0, 0.0", end="\n", file=obj_file)
 
     for action in bpy.data.actions:
         keyframe_chains = {}
