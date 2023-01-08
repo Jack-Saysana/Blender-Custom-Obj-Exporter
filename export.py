@@ -143,7 +143,10 @@ def write_data(filepath):
             for object in collection.all_objects:
                 if object.type == 'MESH' and len(object.data.vertices) <= 8:
                     vertices = object.data.vertices
-                    print("hb %d %d " % (bones.index(object.data.name), len(vertices)), end="", file=obj_file)
+                    if object.data.name in bones:
+                        print("hb %d %d " % (bones.index(object.data.name), len(vertices)), end="", file=obj_file)
+                    else:
+                        print("hb -1 %d " % (len(vertices)), end="", file=obj_file)
                     for i in range(0, 8):
                         world_coords = object.matrix_world @ vertices[i].co
                         if i < 7:
@@ -152,7 +155,6 @@ def write_data(filepath):
                             print("%f %f %f" % (world_coords[0], world_coords[1], world_coords[2]), end="\n", file=obj_file)
                         else:
                             print("0.0, 0.0, 0.0", end="\n", file=obj_file)
-
     for action in bpy.data.actions:
         keyframe_chains = {}
         for fcurve in action.fcurves:
