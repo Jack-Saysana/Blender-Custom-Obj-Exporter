@@ -141,20 +141,39 @@ def write_data(filepath):
     for collection in bpy.data.collections:
         if collection.name == "colliders":
             for object in collection.all_objects:
-                if object.type == 'MESH' and len(object.data.vertices) <= 8:
+                if object.type == 'MESH' :
                     vertices = object.data.vertices
-                    if object.data.name in bones:
-                        print("hb %d %d " % (bones.index(object.data.name), len(vertices)), end="", file=obj_file)
+                    name = object.name
+                    extension = ""
+                    if (len(name) > 2):
+                        extension = name[len(name) - 2:len(name)]
+                        name = name[0:len(name) - 2]
+                        
+                    if name in bones:
+                        if extension == ".p" and len(vertices) <= 8:
+                            print("cp %d %d " % (bones.index(name), len(vertices)), end="", file=obj_file)
+                        elif extension == ".s":
+                            print("cs %d " % (bones.index(name)), end="", file=obj_file)
                     else:
-                        print("hb -1 %d " % (len(vertices)), end="", file=obj_file)
-                    for i in range(0, 8):
-                        world_coords = object.matrix_world @ vertices[i].co
-                        if i < 7:
-                            print("%f %f %f" % (world_coords[0], world_coords[1], world_coords[2]), end=" ", file=obj_file)
-                        elif len(vertices) == 8:
-                            print("%f %f %f" % (world_coords[0], world_coords[1], world_coords[2]), end="\n", file=obj_file)
-                        else:
-                            print("0.0, 0.0, 0.0", end="\n", file=obj_file)
+                        if extension == ".p" and len(vertices) <= 8:
+                            print("cp -1 %d " % (len(vertices)), end="", file=obj_file)
+                        elif extension == ".s":
+                            print("cs -1 ", end="", file=obj_file)
+                            
+                    if extension == ".p" and len(vertices) <= 8:
+                        for i in range(0, 8):
+                            world_coords = object.matrix_world @ vertices[i].co
+                            if i < 7:
+                                print("%f %f %f" % (world_coords[1], world_coords[2], world_coords[0]), end=" ", file=obj_file)
+                            elif len(vertices) == 8:
+                                print("%f %f %f" % (world_coords[1], world_coords[2], world_coords[0]), end="\n", file=obj_file)
+                            else:
+                                print("0.0, 0.0, 0.0", end="\n", file=obj_file)
+                    elif extension == ".s":
+                        local_bbox_center = 0.125 * sum((mathutils.Vector(b) for b in object.bound_box), mathutils.Vector())
+                        global_bbox_center = object.matrix_world @ local_bbox_center
+                        radius = global_bbox_center[0] - vertices[0].co[0]
+                        print("%f %f %f %f" % (global_bbox_center[1], global_bbox_center[2], global_bbox_center[0], radius), end="\n", file=obj_file)
     for action in bpy.data.actions:
         keyframe_chains = {}
         for fcurve in action.fcurves:
