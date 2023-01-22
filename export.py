@@ -172,7 +172,8 @@ def write_data(filepath):
                     elif extension == ".s":
                         local_bbox_center = 0.125 * sum((mathutils.Vector(b) for b in object.bound_box), mathutils.Vector())
                         global_bbox_center = object.matrix_world @ local_bbox_center
-                        radius = global_bbox_center[0] - vertices[0].co[0]
+                        world_coords = object.matrix_world @ vertices[0].co
+                        radius = abs(global_bbox_center.magnitude - world_coords.magnitude)
                         print("%f %f %f %f" % (global_bbox_center[1], global_bbox_center[2], global_bbox_center[0], radius), end="\n", file=obj_file)
     for action in bpy.data.actions:
         keyframe_chains = {}
