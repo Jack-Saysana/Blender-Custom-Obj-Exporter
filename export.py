@@ -151,14 +151,14 @@ def write_data(filepath):
                         
                     if name in bones:
                         if extension == ".p" and len(vertices) <= 8:
-                            print("cp %d %d " % (bones.index(name), len(vertices)), end="", file=obj_file)
+                            print("hp %d %d " % (bones.index(name), len(vertices)), end="", file=obj_file)
                         elif extension == ".s":
-                            print("cs %d " % (bones.index(name)), end="", file=obj_file)
+                            print("hs %d " % (bones.index(name)), end="", file=obj_file)
                     else:
                         if extension == ".p" and len(vertices) <= 8:
-                            print("cp -1 %d " % (len(vertices)), end="", file=obj_file)
+                            print("hp -1 %d " % (len(vertices)), end="", file=obj_file)
                         elif extension == ".s":
-                            print("cs -1 ", end="", file=obj_file)
+                            print("hs -1 ", end="", file=obj_file)
                             
                     if extension == ".p" and len(vertices) <= 8:
                         for i in range(0, 8):
@@ -173,7 +173,7 @@ def write_data(filepath):
                         local_bbox_center = 0.125 * sum((mathutils.Vector(b) for b in object.bound_box), mathutils.Vector())
                         global_bbox_center = object.matrix_world @ local_bbox_center
                         world_coords = object.matrix_world @ vertices[0].co
-                        radius = abs(global_bbox_center.magnitude - world_coords.magnitude)
+                        radius = abs((global_bbox_center - world_coords).magnitude)
                         print("%f %f %f %f" % (global_bbox_center[1], global_bbox_center[2], global_bbox_center[0], radius), end="\n", file=obj_file)
     for action in bpy.data.actions:
         keyframe_chains = {}
