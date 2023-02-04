@@ -132,9 +132,15 @@ def write_data(filepath):
                 print("f", end =" ", file=obj_file)
                 for index in range(polygon.loop_start, polygon.loop_start + polygon.loop_total):
                     if index < polygon.loop_start + polygon.loop_total - 1:
-                        print("%d/%d/%d" % (mesh_data.loops[index].vertex_index + 1, get_index(uvs, mesh_data.uv_layers.active.data[index].uv, 2) + 1, get_index(normals, polygon.normal, 3) + 1), end =" ", file=obj_file)
+                        if (index < len(mesh_data.uv_layers.active.data)):
+                            print("%d/%d/%d" % (mesh_data.loops[index].vertex_index + 1, get_index(uvs, mesh_data.uv_layers.active.data[index].uv, 2) + 1, get_index(normals, polygon.normal, 3) + 1), end =" ", file=obj_file)
+                        else:
+                            print("%d//%d" % (mesh_data.loops[index].vertex_index + 1, get_index(normals, polygon.normal, 3) + 1), end =" ", file=obj_file)
                     else:
-                        print("%d/%d/%d" % (mesh_data.loops[index].vertex_index + 1, get_index(uvs, mesh_data.uv_layers.active.data[index].uv, 2) + 1, get_index(normals, polygon.normal, 3) + 1), end ="", file=obj_file)
+                        if (index < len(mesh_data.uv_layers.active.data)):
+                            print("%d/%d/%d" % (mesh_data.loops[index].vertex_index + 1, get_index(uvs, mesh_data.uv_layers.active.data[index].uv, 2) + 1, get_index(normals, polygon.normal, 3) + 1), end ="", file=obj_file)
+                        else:
+                            print("%d//%d" % (mesh_data.loops[index].vertex_index + 1, get_index(normals, polygon.normal, 3) + 1), end ="", file=obj_file)
                 print("", file=obj_file)
 
     print("", file=obj_file)
