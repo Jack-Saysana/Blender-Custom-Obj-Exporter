@@ -56,7 +56,7 @@ def write_data(filepath):
         collections = object.users_collection
         hit_box = False
         for collection in collections:
-            if collection.name == "colliders":
+            if collection.name == "colliders" or collection.name == "hit_boxes" or collection.name == "hurt_boxes":
                 hit_box = True
                 
         if object.type == 'ARMATURE':
@@ -145,7 +145,7 @@ def write_data(filepath):
 
     print("", file=obj_file)
     for collection in bpy.data.collections:
-        if collection.name == "colliders":
+        if collection.name == "colliders" or collection.name == "hit_boxes" or collection.name == "hurt_boxes":
             for object in collection.all_objects:
                 if object.type == 'MESH' :
                     vertices = object.data.vertices
@@ -154,17 +154,25 @@ def write_data(filepath):
                     if (len(name) > 2):
                         extension = name[len(name) - 2:len(name)]
                         name = name[0:len(name) - 2]
-                        
+
+                    category = -1
+                    if collection.name == "colliders":
+                        category = 0
+                    elif collection.name == "hit_boxes":
+                        category = 1
+                    elif collection.name == "hurt_boxes":
+                        category = 2
+
                     if name in bones:
                         if extension == ".p" and len(vertices) <= 8:
-                            print("hp %d %d " % (bones.index(name), len(vertices)), end="", file=obj_file)
+                            print("hp %d %d %d " % (category, bones.index(name), len(vertices)), end="", file=obj_file)
                         elif extension == ".s":
-                            print("hs %d " % (bones.index(name)), end="", file=obj_file)
+                            print("hs %d %d " % (category, bones.index(name)), end="", file=obj_file)
                     else:
                         if extension == ".p" and len(vertices) <= 8:
-                            print("hp -1 %d " % (len(vertices)), end="", file=obj_file)
+                            print("hp %d -1 %d " % (category, len(vertices)), end="", file=obj_file)
                         elif extension == ".s":
-                            print("hs -1 ", end="", file=obj_file)
+                            print("hs %d -1 " % (category), end="", file=obj_file)
                             
                     if extension == ".p" and len(vertices) <= 8:
                         for i in range(0, 8):
