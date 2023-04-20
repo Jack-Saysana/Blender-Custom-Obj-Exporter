@@ -29,6 +29,24 @@ def get_index(arr, target, size):
             return i
     return -1
 
+def split_extensions(name):
+    extensions = []
+    index = len(name) - 1
+    end = len(name)
+    extension = ""
+    r_name = name[::-1]
+    for i in range(0, len(name)):
+        if r_name[i] == '.':
+            extensions.append(name[index + 1:end:1])
+            end = index
+        index = index - 1
+    name = name[0:end:1]
+    split = {
+        "name": name,
+        "extensions": extensions
+    }
+    return split
+
 def compare_group(group):
     return group.weight
 
@@ -149,11 +167,11 @@ def write_data(filepath):
             for object in collection.all_objects:
                 if object.type == 'MESH' :
                     vertices = object.data.vertices
-                    name = object.name
-                    extension = ""
-                    if (len(name) > 2):
-                        extension = name[len(name) - 2:len(name)]
-                        name = name[0:len(name) - 2]
+                    split = split_extensions(object.name)
+                    name = split["name"]
+                    extensions = split["extensions"]
+                    if extensions[len(extensions) - 1] == "L" or extensions[len(extensions) - 1] == "R":
+                        name = name + "." + extensions[len(extensions) - 1]
 
                     category = -1
                     if collection.name == "colliders":
@@ -164,17 +182,17 @@ def write_data(filepath):
                         category = 2
 
                     if name in bones:
-                        if extension == ".p" and len(vertices) <= 8:
+                        if "p" in extensions and len(vertices) <= 8:
                             print("hp %d %d %d " % (category, bones.index(name), len(vertices)), end="", file=obj_file)
-                        elif extension == ".s":
+                        if "s" in extensions and len(vertices) <= 8:
                             print("hs %d %d " % (category, bones.index(name)), end="", file=obj_file)
                     else:
-                        if extension == ".p" and len(vertices) <= 8:
+                        if "p" in extensions and len(vertices) <= 8:
                             print("hp %d -1 %d " % (category, len(vertices)), end="", file=obj_file)
-                        elif extension == ".s":
+                        if "s" in extensions and len(vertices) <= 8:
                             print("hs %d -1 " % (category), end="", file=obj_file)
                             
-                    if extension == ".p" and len(vertices) <= 8:
+                    if "p" in extensions and len(vertices) <= 8:
                         for i in range(0, 8):
                             world_coords = object.matrix_world @ vertices[i].co
                             if i < 7:
@@ -183,7 +201,7 @@ def write_data(filepath):
                                 print("%f %f %f" % (world_coords[1], world_coords[2], world_coords[0]), end="\n", file=obj_file)
                             else:
                                 print("0.0, 0.0, 0.0", end="\n", file=obj_file)
-                    elif extension == ".s":
+                    if "s" in extensions and len(vertices) <= 8:
                         local_bbox_center = 0.125 * sum((mathutils.Vector(b) for b in object.bound_box), mathutils.Vector())
                         global_bbox_center = object.matrix_world @ local_bbox_center
                         world_coords = object.matrix_world @ vertices[0].co
