@@ -184,12 +184,12 @@ def write_data(filepath):
                     if name in bones:
                         if "p" in extensions and len(vertices) <= 8:
                             print("hp %d %d %d " % (category, bones.index(name), len(vertices)), end="", file=obj_file)
-                        if "s" in extensions and len(vertices) <= 8:
+                        if "s" in extensions:
                             print("hs %d %d " % (category, bones.index(name)), end="", file=obj_file)
                     else:
                         if "p" in extensions and len(vertices) <= 8:
                             print("hp %d -1 %d " % (category, len(vertices)), end="", file=obj_file)
-                        if "s" in extensions and len(vertices) <= 8:
+                        if "s" in extensions:
                             print("hs %d -1 " % (category), end="", file=obj_file)
                             
                     if "p" in extensions and len(vertices) <= 8:
@@ -201,7 +201,7 @@ def write_data(filepath):
                                 print("%f %f %f" % (world_coords[1], world_coords[2], world_coords[0]), end="\n", file=obj_file)
                             else:
                                 print("0.0, 0.0, 0.0", end="\n", file=obj_file)
-                    if "s" in extensions and len(vertices) <= 8:
+                    if "s" in extensions:
                         local_bbox_center = 0.125 * sum((mathutils.Vector(b) for b in object.bound_box), mathutils.Vector())
                         global_bbox_center = object.matrix_world @ local_bbox_center
                         world_coords = object.matrix_world @ vertices[0].co
