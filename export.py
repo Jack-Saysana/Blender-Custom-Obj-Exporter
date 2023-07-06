@@ -204,7 +204,7 @@ def write_data(filepath):
                             
                     if "p" in extensions and len(vertices) <= 8:
                         for i in range(0, 8):
-                            world_coords = opengl_mat @ object.matrix_world @ vertices[i].co
+                            world_coords = opengl_mat @ (object.matrix_world @ vertices[i].co)
                             if i < 7:
                                 print("%f %f %f" % (world_coords[0], world_coords[1], world_coords[2]), end=" ", file=obj_file)
                             elif len(vertices) == 8:
@@ -214,7 +214,7 @@ def write_data(filepath):
                     if "s" in extensions:
                         local_bbox_center = 0.125 * sum((mathutils.Vector(b) for b in object.bound_box), mathutils.Vector())
                         global_bbox_center = object.matrix_world @ local_bbox_center
-                        world_coords = opengl_mat @ object.matrix_world @ vertices[0].co
+                        world_coords = opengl_mat @ (object.matrix_world @ vertices[0].co)
                         radius = abs((global_bbox_center - world_coords).magnitude)
                         print("%f %f %f %f" % (global_bbox_center[0], global_bbox_center[1], global_bbox_center[2], radius), end="\n", file=obj_file)
     for action in bpy.data.actions:
@@ -277,10 +277,10 @@ def write_data(filepath):
                     world_offset[2] = world_offset_vector[2] + 1.0
 
                 if chain_data[1] == ".rotation_quaternion":
-                    translation_offset = opengl_mat @ mathutils.Vector(world_offset[1], world_offset[2], world_offset[3])
+                    translation_offset = opengl_mat @ mathutils.Vector((world_offset[1], world_offset[2], world_offset[3]))
                     print("kp %d %f %f %f %f" % (int(float(keyframe)), translation_offset[0], translation_offset[1], translation_offset[2], world_offset[0]), file=obj_file)
                 else:
-                    world_offset = opengl_mat @ world_offset
+                    world_offset = opengl_mat @ mathutils.Vector((world_offset[0], world_offset[1], world_offset[2]))
                     print("kp %d %f %f %f" % (int(float(keyframe)), world_offset[0], world_offset[1], world_offset[2]), file=obj_file)
 
     obj_file.close()
