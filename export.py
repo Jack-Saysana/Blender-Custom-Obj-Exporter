@@ -50,15 +50,24 @@ def split_extensions(name):
 def compare_group(group):
     return group.weight
 
+# matrix to transform blender world coordinates to opengl's coordinate system
+opengl_mat = mathutils.Matrix([(0.0, 1.0, 0.0), (0.0, 0.0, 1.0), (1.0, 0.0, 0.0)])
+
 bones = []
 next_id = -1
 def traverse_tree(world_mat, bone, parent_id, level, obj_file):
-    world_coords = world_mat @ bone.head_local
+    world_coords = opengl_mat @ (world_mat @ bone.head_local)
+    #world_tail = world_mat @ bone.tail_local
     global next_id
     next_id += 1
     cur_id = next_id
+    print(bone.name)
+    print(opengl_mat)
+    print(bone.matrix)
+    print(opengl_mat @ bone.matrix)
     print("# %s" % (bone.name), file=obj_file)
-    print("b %f %f %f %d %d\n" %(world_coords[1], world_coords[2], world_coords[0], parent_id, len(bone.children)), file=obj_file)
+    #print("b %f %f %f %f %f %f %d %d\n" %(world_coords[1], world_coords[2], world_coords[0], world_tail[1], world_tail[2], world_tail[0], parent_id, len(bone.children)), file=obj_file)
+    print("b %f %f %f %d %d\n" %(world_coords[0], world_coords[1], world_coords[2], parent_id, len(bone.children)), file=obj_file)
     bones.append(bone.name)
     for child in bone.children:
         traverse_tree(world_mat, child, cur_id, level + 1, obj_file)
@@ -100,8 +109,8 @@ def write_data(filepath):
                     else:
                         used.append(-1)
                         
-                world_coords = object.matrix_world @ vertex.co
-                print("v %f %f %f " % (world_coords[1], world_coords[2], world_coords[0]), end = "", file=obj_file)
+                world_coords = opengl_mat @ (object.matrix_world @ vertex.co)
+                print("v %f %f %f " % (world_coords[0], world_coords[1], world_coords[2]), end = "", file=obj_file)
                 for i in range(0, len(used)):
                     if (i < len(used) - 1):
                         if (used[i] != -1):
@@ -121,6 +130,7 @@ def write_data(filepath):
             for polygon in mesh_data.polygons:
                 if exists(normals, polygon.normal, 3) == False:
                     normals.append(polygon.normal)
+                    # does this need to be transformed to opengl coords?
                     print("vn %f %f %f" % (polygon.normal[1], polygon.normal[2], polygon.normal[0]), file=obj_file)
 
             material = object.active_material
@@ -194,19 +204,19 @@ def write_data(filepath):
                             
                     if "p" in extensions and len(vertices) <= 8:
                         for i in range(0, 8):
-                            world_coords = object.matrix_world @ vertices[i].co
+                            world_coords = opengl_mat @ object.matrix_world @ vertices[i].co
                             if i < 7:
-                                print("%f %f %f" % (world_coords[1], world_coords[2], world_coords[0]), end=" ", file=obj_file)
+                                print("%f %f %f" % (world_coords[0], world_coords[1], world_coords[2]), end=" ", file=obj_file)
                             elif len(vertices) == 8:
-                                print("%f %f %f" % (world_coords[1], world_coords[2], world_coords[0]), end="\n", file=obj_file)
+                                print("%f %f %f" % (world_coords[0], world_coords[1], world_coords[2]), end="\n", file=obj_file)
                             else:
                                 print("0.0, 0.0, 0.0", end="\n", file=obj_file)
                     if "s" in extensions and len(vertices) <= 8:
                         local_bbox_center = 0.125 * sum((mathutils.Vector(b) for b in object.bound_box), mathutils.Vector())
                         global_bbox_center = object.matrix_world @ local_bbox_center
-                        world_coords = object.matrix_world @ vertices[0].co
+                        world_coords = opengl_mat @ object.matrix_world @ vertices[0].co
                         radius = abs((global_bbox_center - world_coords).magnitude)
-                        print("%f %f %f %f" % (global_bbox_center[1], global_bbox_center[2], global_bbox_center[0], radius), end="\n", file=obj_file)
+                        print("%f %f %f %f" % (global_bbox_center[0], global_bbox_center[1], global_bbox_center[2], radius), end="\n", file=obj_file)
     for action in bpy.data.actions:
         keyframe_chains = {}
         for fcurve in action.fcurves:
@@ -267,9 +277,11 @@ def write_data(filepath):
                     world_offset[2] = world_offset_vector[2] + 1.0
 
                 if chain_data[1] == ".rotation_quaternion":
-                    print("kp %d %f %f %f %f" % (int(float(keyframe)), world_offset[2], world_offset[3], world_offset[1], world_offset[0]), file=obj_file)
+                    translation_offset = opengl_mat @ mathutils.Vector(world_offset[1], world_offset[2], world_offset[3])
+                    print("kp %d %f %f %f %f" % (int(float(keyframe)), translation_offset[0], translation_offset[1], translation_offset[2], world_offset[0]), file=obj_file)
                 else:
-                    print("kp %d %f %f %f" % (int(float(keyframe)), world_offset[1], world_offset[2], world_offset[0]), file=obj_file)
+                    world_offset = opengl_mat @ world_offset
+                    print("kp %d %f %f %f" % (int(float(keyframe)), world_offset[0], world_offset[1], world_offset[2]), file=obj_file)
 
     obj_file.close()
     mtl_file.close()
