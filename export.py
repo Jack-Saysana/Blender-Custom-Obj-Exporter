@@ -61,13 +61,17 @@ def traverse_tree(world_mat, bone, parent_id, level, obj_file):
     global next_id
     next_id += 1
     cur_id = next_id
-    print(bone.name)
-    print(opengl_mat)
-    print(bone.matrix)
-    print(opengl_mat @ bone.matrix)
+    opengl_bone_mat = opengl_mat @ bone.matrix
+    bone_basis_x = (opengl_bone_mat[0][0], opengl_bone_mat[1][0], opengl_bone_mat[2][0])
+    bone_basis_y = (opengl_bone_mat[0][1], opengl_bone_mat[1][1], opengl_bone_mat[2][1])
+    bone_basis_z = (opengl_bone_mat[0][2], opengl_bone_mat[1][2], opengl_bone_mat[2][2])
     print("# %s" % (bone.name), file=obj_file)
     #print("b %f %f %f %f %f %f %d %d\n" %(world_coords[1], world_coords[2], world_coords[0], world_tail[1], world_tail[2], world_tail[0], parent_id, len(bone.children)), file=obj_file)
-    print("b %f %f %f %d %d\n" %(world_coords[0], world_coords[1], world_coords[2], parent_id, len(bone.children)), file=obj_file)
+    print("b %f %f %f %f %f %f %f %f %f %f %f %f %d %d\n" %(world_coords[0], world_coords[1], world_coords[2], \
+                                                            bone_basis_x[0], bone_basis_x[1], bone_basis_x[2], \
+                                                            bone_basis_y[0], bone_basis_y[1], bone_basis_y[2], \
+                                                            bone_basis_z[0], bone_basis_z[1], bone_basis_z[2], \
+                                                            parent_id, len(bone.children)), file=obj_file)
     bones.append(bone.name)
     for child in bone.children:
         traverse_tree(world_mat, child, cur_id, level + 1, obj_file)
