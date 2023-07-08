@@ -217,7 +217,7 @@ def write_data(filepath):
                                 print("0.0, 0.0, 0.0", end="\n", file=obj_file)
                     if "s" in extensions:
                         local_bbox_center = 0.125 * sum((mathutils.Vector(b) for b in object.bound_box), mathutils.Vector())
-                        global_bbox_center = object.matrix_world @ local_bbox_center
+                        global_bbox_center = opengl_mat @ (object.matrix_world @ local_bbox_center)
                         world_coords = opengl_mat @ (object.matrix_world @ vertices[0].co)
                         radius = abs((global_bbox_center - world_coords).magnitude)
                         print("%f %f %f %f" % (global_bbox_center[0], global_bbox_center[1], global_bbox_center[2], radius), end="\n", file=obj_file)
