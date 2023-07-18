@@ -57,7 +57,7 @@ bones = []
 next_id = -1
 def traverse_tree(world_mat, bone, parent_id, level, obj_file):
     world_head = opengl_mat @ (world_mat @ bone.head_local)
-    world_tail = opengl_mat @ (world_mat @ bone.tail_local)
+    #world_tail = opengl_mat @ (world_mat @ bone.tail_local)
     global next_id
     next_id += 1
     cur_id = next_id
@@ -66,12 +66,12 @@ def traverse_tree(world_mat, bone, parent_id, level, obj_file):
     bone_basis_y = (opengl_bone_mat[0][1], opengl_bone_mat[1][1], opengl_bone_mat[2][1])
     bone_basis_z = (opengl_bone_mat[0][2], opengl_bone_mat[1][2], opengl_bone_mat[2][2])
     print("# %s" % (bone.name), file=obj_file)
-    print("b %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %d %d\n" %(world_tail[0], world_tail[1], world_tail[2], \
-                                                                     world_head[0], world_head[1], world_head[2], \
-                                                                     bone_basis_x[0], bone_basis_x[1], bone_basis_x[2], \
-                                                                     bone_basis_y[0], bone_basis_y[1], bone_basis_y[2], \
-                                                                     bone_basis_z[0], bone_basis_z[1], bone_basis_z[2], \
-                                                                     parent_id, len(bone.children)), file=obj_file)
+    #print("b %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %d %d\n" %(world_tail[0], world_tail[1], world_tail[2], \
+    print("b %f %f %f %f %f %f %f %f %f %f %f %f %d %d\n" %(world_head[0], world_head[1], world_head[2], \
+                                                            bone_basis_x[0], bone_basis_x[1], bone_basis_x[2], \
+                                                            bone_basis_y[0], bone_basis_y[1], bone_basis_y[2], \
+                                                            bone_basis_z[0], bone_basis_z[1], bone_basis_z[2], \
+                                                            parent_id, len(bone.children)), file=obj_file)
     bones.append(bone.name)
     for child in bone.children:
         traverse_tree(world_mat, child, cur_id, level + 1, obj_file)
