@@ -62,9 +62,9 @@ def traverse_tree(world_mat, bone, parent_id, level, obj_file):
     next_id += 1
     cur_id = next_id
     opengl_bone_mat = opengl_mat @ bone.matrix
-    bone_basis_x = (opengl_bone_mat[0][0], opengl_bone_mat[1][0], opengl_bone_mat[2][0])
-    bone_basis_y = (opengl_bone_mat[0][1], opengl_bone_mat[1][1], opengl_bone_mat[2][1])
-    bone_basis_z = (opengl_bone_mat[0][2], opengl_bone_mat[1][2], opengl_bone_mat[2][2])
+    bone_basis_x = mathutils.Vector((opengl_bone_mat[0][0], opengl_bone_mat[1][0], opengl_bone_mat[2][0])).normalized()
+    bone_basis_y = mathutils.Vector((opengl_bone_mat[0][1], opengl_bone_mat[1][1], opengl_bone_mat[2][1])).normalized()
+    bone_basis_z = mathutils.Vector((opengl_bone_mat[0][2], opengl_bone_mat[1][2], opengl_bone_mat[2][2])).normalized()
     print("# %s" % (bone.name), file=obj_file)
     #print("b %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %d %d\n" %(world_tail[0], world_tail[1], world_tail[2], \
     print("b %f %f %f %f %f %f %f %f %f %f %f %f %d %d\n" %(world_head[0], world_head[1], world_head[2], \
