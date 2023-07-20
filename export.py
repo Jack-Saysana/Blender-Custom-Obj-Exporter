@@ -55,13 +55,19 @@ opengl_mat = mathutils.Matrix([(0.0, 1.0, 0.0), (0.0, 0.0, 1.0), (1.0, 0.0, 0.0)
 
 bones = []
 next_id = -1
+# because bone.matrix only retrieves the bones basis vectors in its parent bone space, we must accumulate a transformation
+# matrix which transforms the bone basis vectors into armature space
+compound_bone_mat = mathutils.Matrix([(1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)])
 def traverse_tree(world_mat, bone, parent_id, level, obj_file):
     world_head = opengl_mat @ (world_mat @ bone.head_local)
     #world_tail = opengl_mat @ (world_mat @ bone.tail_local)
     global next_id
     next_id += 1
     cur_id = next_id
-    opengl_bone_mat = opengl_mat @ bone.matrix
+    global compound_bone_mat
+    compound_bone_mat = bone.matrix @ compound_bone_mat
+    # Armature space to world space to opengl space
+    opengl_bone_mat = opengl_mat @ (world_mat.to_3x3() @ compound_bone_mat)
     bone_basis_x = mathutils.Vector((opengl_bone_mat[0][0], opengl_bone_mat[1][0], opengl_bone_mat[2][0])).normalized()
     bone_basis_y = mathutils.Vector((opengl_bone_mat[0][1], opengl_bone_mat[1][1], opengl_bone_mat[2][1])).normalized()
     bone_basis_z = mathutils.Vector((opengl_bone_mat[0][2], opengl_bone_mat[1][2], opengl_bone_mat[2][2])).normalized()
