@@ -91,16 +91,17 @@ def write_data(filepath):
     
     print("mtllib %s.mtl" % bpy.path.basename(filepath[0:-4]), file=obj_file)
     for object in bpy.data.objects:
+        if object.type == 'ARMATURE':
+            for bone in object.data.bones:
+                if bone.parent == None:
+                    traverse_tree(object.matrix_world, bone, -1, 0, obj_file)
+    for object in bpy.data.objects:
         collections = object.users_collection
         hit_box = False
         for collection in collections:
             if collection.name == "colliders" or collection.name == "hit_boxes" or collection.name == "hurt_boxes":
                 hit_box = True
                 
-        if object.type == 'ARMATURE':
-            for bone in object.data.bones:
-                if bone.parent == None:
-                    traverse_tree(object.matrix_world, bone, -1, 0, obj_file)
         if object.type == 'MESH' and hit_box == False:
             mesh_data = object.data
             group_list = object.vertex_groups
