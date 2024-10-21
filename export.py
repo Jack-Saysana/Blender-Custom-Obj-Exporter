@@ -88,7 +88,7 @@ def write_data(filepath):
     next_id = -1
     obj_file = open(filepath, 'w', encoding='utf-8')
     mtl_file = open(filepath[0:-4] + ".mtl", 'w', encoding='utf-8')
-    
+
     print("mtllib %s.mtl" % bpy.path.basename(filepath[0:-4]), file=obj_file)
     for object in bpy.data.objects:
         if object.type == 'ARMATURE':
@@ -101,7 +101,7 @@ def write_data(filepath):
         for collection in collections:
             if collection.name == "colliders" or collection.name == "hit_boxes" or collection.name == "hurt_boxes":
                 hit_box = True
-                
+
         if object.type == 'MESH' and hit_box == False:
             mesh_data = object.data
             group_list = object.vertex_groups
@@ -113,14 +113,14 @@ def write_data(filepath):
                 for group in vertex.groups:
                     groups.append(group)
                 groups.sort(key=compare_group, reverse=True)
-                
+
                 used = []
                 for i in range(0, 4):
                     if i < len(groups):
                         used.append(groups[i])
                     else:
                         used.append(-1)
-                        
+
                 world_coords = opengl_mat @ (object.matrix_world @ vertex.co)
                 print("v %f %f %f " % (world_coords[0], world_coords[1], world_coords[2]), end = "", file=obj_file)
                 for i in range(0, len(used)):
@@ -138,12 +138,12 @@ def write_data(filepath):
                 if exists(uvs, uv.uv, 2) == False:
                     uvs.append(uv.uv)
                     print("vt %f %f" % (uv.uv[0], uv.uv[1]), file=obj_file)
-                    
+
             for polygon in mesh_data.polygons:
                 if exists(normals, polygon.normal, 3) == False:
-                    
+
                     normals.append(polygon.normal)
-                    
+
                     normal_matrix = object.matrix_world.to_3x3().inverted_safe().transposed()
                     world_norm = opengl_mat @ (normal_matrix @ polygon.normal)
                     print("vn %f %f %f" % (world_norm[0], world_norm[1], world_norm[2]), file=obj_file)
@@ -170,7 +170,7 @@ def write_data(filepath):
                                             break
                     break
                 print("usemtl %s" % (material.name), file=obj_file)
-                
+
             for polygon in mesh_data.polygons:
                 print("f", end =" ", file=obj_file)
                 for index in range(polygon.loop_start, polygon.loop_start + polygon.loop_total):
@@ -187,6 +187,7 @@ def write_data(filepath):
                 print("", file=obj_file)
 
     print("", file=obj_file)
+    cur_col = 0
     for collection in bpy.data.collections:
         if collection.name == "colliders" or collection.name == "hit_boxes" or collection.name == "hurt_boxes":
             for object in collection.all_objects:
@@ -216,7 +217,7 @@ def write_data(filepath):
                             print("hp %d -1 %d " % (category, len(vertices)), end="", file=obj_file)
                         if "s" in extensions:
                             print("hs %d -1 " % (category), end="", file=obj_file)
-                            
+
                     if "p" in extensions and len(vertices) <= 8:
                         for i in range(0, 8):
                             world_coords = opengl_mat @ (object.matrix_world @ vertices[i].co)
@@ -232,6 +233,9 @@ def write_data(filepath):
                         world_coords = opengl_mat @ (object.matrix_world @ vertices[0].co)
                         radius = abs((global_bbox_center - world_coords).magnitude)
                         print("%f %f %f %f" % (global_bbox_center[0], global_bbox_center[1], global_bbox_center[2], radius), end="\n", file=obj_file)
+                    # Write a single dof for the collider: a revolute joint about it's x axis
+                    print("dof %d 1 1.0 0.0 0.0" % (cur_col), end="\n", file=obj_file)
+                    cur_col = cur_col + 1
     for action in bpy.data.actions:
         keyframe_chains = {}
         for fcurve in action.fcurves:
