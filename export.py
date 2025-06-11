@@ -55,19 +55,16 @@ opengl_mat = mathutils.Matrix([(0.0, 1.0, 0.0), (0.0, 0.0, 1.0), (1.0, 0.0, 0.0)
 
 bones = []
 next_id = -1
-# because bone.matrix only retrieves the bones basis vectors in its parent bone space, we must accumulate a transformation
-# matrix which transforms the bone basis vectors into armature space
-compound_bone_mat = mathutils.Matrix([(1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)])
-def traverse_tree(world_mat, bone, parent_id, level, obj_file):
-    world_head = opengl_mat @ (world_mat @ bone.head_local)
-    world_tail = opengl_mat @ (world_mat @ bone.tail_local)
+def traverse_tree(parent_mat, bone, parent_id, obj_file):
+    global world_mat
     global next_id
     next_id += 1
     cur_id = next_id
-    global compound_bone_mat
-    compound_bone_mat = bone.matrix @ compound_bone_mat
+    world_head = opengl_mat @ (world_mat @ bone.head_local)
+    world_tail = opengl_mat @ (world_mat @ bone.tail_local)
+    parent_mat = parent_mat @ bone.matrix
     # Armature space to world space to opengl space
-    opengl_bone_mat = opengl_mat @ (world_mat.to_3x3() @ compound_bone_mat)
+    opengl_bone_mat = opengl_mat @ (world_mat.to_3x3() @ parent_mat)
     bone_basis_x = mathutils.Vector((opengl_bone_mat[0][0], opengl_bone_mat[1][0], opengl_bone_mat[2][0])).normalized()
     bone_basis_y = mathutils.Vector((opengl_bone_mat[0][1], opengl_bone_mat[1][1], opengl_bone_mat[2][1])).normalized()
     bone_basis_z = mathutils.Vector((opengl_bone_mat[0][2], opengl_bone_mat[1][2], opengl_bone_mat[2][2])).normalized()
@@ -81,20 +78,20 @@ def traverse_tree(world_mat, bone, parent_id, level, obj_file):
                                                                      parent_id, len(bone.children)), file=obj_file)
     bones.append(bone.name)
     for child in bone.children:
-        traverse_tree(world_mat, child, cur_id, level + 1, obj_file)
+        traverse_tree(parent_mat, child, cur_id, obj_file)
 
 def write_data(filepath):
-    global next_id
-    next_id = -1
     obj_file = open(filepath, 'w', encoding='utf-8')
     mtl_file = open(filepath[0:-4] + ".mtl", 'w', encoding='utf-8')
 
     print("mtllib %s.mtl" % bpy.path.basename(filepath[0:-4]), file=obj_file)
+    global world_mat
     for object in bpy.data.objects:
         if object.type == 'ARMATURE':
             for bone in object.data.bones:
                 if bone.parent == None:
-                    traverse_tree(object.matrix_world, bone, -1, 0, obj_file)
+                    world_mat = object.matrix_world
+                    traverse_tree(mathutils.Matrix.Identity(3), bone, -1, obj_file)
     for object in bpy.data.objects:
         collections = object.users_collection
         hit_box = False
