@@ -1,5 +1,7 @@
 import bpy
 import re
+import os
+import struct
 from mathutils import Vector
 from mathutils import Matrix
 entity = bpy.data.texts["entity.py"].as_module()
@@ -12,6 +14,13 @@ CHUNK_RE = re.compile(r"chunk_(\d+)")
 ENTITY_RE = re.compile(r"entity_(\d+)")
 
 HITBOX_COLLECTION_NAMES = {"hit_boxes", "colliders", "hurt_boxes"}
+
+def clear_dir(folder):
+    for filename in os.listdir(folder):
+        file_path = os.path.join(folder, filename)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
 
 def get_collection_id(name, pattern):
     match = pattern.match(name)
@@ -105,12 +114,13 @@ def aggregate_scene():
                 if entity_id not in entity_registry:
                     entity_registry[entity_id] = get_entity_definition(entity_col)
 
-                world_pos = obj.matrix_world.translation
-                local_pos = world_pos - chunk_center
+                loc, rot, scale = obj.matrix_world.decompose()
 
                 chunk_entry["entities"].append({
                     "entity_id": entity_id,
-                    "position": local_pos
+                    "loc": loc,
+                    "rot": rot,
+                    "scale": scale
                 })
 
         chunk_entry["used_entity_ids"] = list(used_entity_ids)
@@ -172,13 +182,57 @@ def serialize_scene_entity(directory, name, entity):
 
     return {'FINISHED'}
 
+def serialize_chunk_metadata(directory, chunks):
+    open(directory + "/md.bin") as md_file:
+        num_chunks = struct.pack("<Q", len(chunks))
+        md_file.write(num_chunks)
+        for chunk in chunks:
+            chunk_origin = chunk["center"]
+            chunk_size = chunk["half_width"]
+            phys_data = struct.pack("<ffff", chunk_origin.x, chunk_origin.y, chunk_origin.z, chunk_size)
+            md_file.write(phys_data)
+            # Neighbors will have to be manually calculated in map editor
+            md_file.write(b"\x00" * num_chunks)
+
+def serialize_chunk(directory, chunk_id, chunk, entity_data):
+    open(directory + "/" + chunk_id + ".bin") as chunk_file:
+        entities = chunk["entities"]
+        # Nav mesh added in map editor
+        nav_data = struct.pack("<QQ", 0, 0)
+        # NPCs added in map editor
+        num_npcs = struct.pack("<Q", 0)
+        num_sps = struct.pack("<Q", len(entities))
+        md_file.write(nav_data + num_npcs + num_sps)
+        for entity in entities:
+            l = entity["loc"]
+            r = entity["rot"]
+            s = entity["scale"]
+            loc = struct.pack("<fff", l.x, l.y, l.z)
+            rot = struct.pack("<ffff", r.x, r.y, r.z, r.w)
+            scale = struct.pack("<fff", s.x, s.y, s.z)
+            # Entity mass manually set in map editor
+            inv_mass = struct.pack("<f", 0)
+            model_id = list(entitiy_data).index(entity["entity_id"])
+            md_file.write(rot + loc + scale)
+            md_file.write(struct.pack("<i", model_id) + inv_mass)
+
 def serialize_scene(dir_path):
     scene_data = aggregate_scene()
 
     chunks = scene_data["chunks"]
     entities = scene_data["entities"]
 
-    for entity_id in entities:
-        serialize_scene_entity(dir_path, entity_id, entities[entity_id])
+    chunk_dir = dir_path + "/chunks"
+    entity_dir = dir_path + "/entities"
+    os.makedirs(chunk_dir, exist_ok=True)
+    os.makedirs(entity_dir, exist_ok=True)
 
-    # TODO Export chunks
+    clear_dir(chunk_dir)
+    clear_dir(entity_dir)
+
+    for entity_id in entities:
+        serialize_scene_entity(entity_dir, entity_id, entities[entity_id])
+
+    serialize_chunk_metadata(chunk_dir, chunks)
+    for index, chunk in enumaerate(chunks):
+        serialize_chunk(chunk_dir, index, chunk, entities)
