@@ -176,6 +176,64 @@ def serialize_mesh(entity_mat, object, bones, obj_file, mtl_file):
         print("", file=obj_file)
 
 """
+cur_col: number of colliders serialized for entity
+entity_origin: Entity origin in world space
+col_name: name of collider list to be serialized (hit_boxes, colliders or hurt_boxes)
+bones: list of bone names
+obj_file: output object file
+"""
+def serialize_collider(cur_col, entity_origin, col_name, object, bones, obj_file):
+    vertices = object.data.vertices
+    # Ensure colliders are given in entity space
+    entity_mat = mathutils.Matrix.Translation(-entity_origin) @ object.matrix_world;
+    split = split_extensions(object.name)
+    name = split["name"]
+    extensions = split["extensions"]
+    if "L" in extensions:
+        name = name + ".L"
+    if "R" in extensions:
+        name = name + ".R"
+
+    category = -1
+    cat_split = split_extensions(col_name)
+    cat_name = cat_split["name"]
+    if cat_name == "colliders":
+        category = 0
+    elif cat_name == "hit_boxes":
+        category = 1
+    elif cat_name == "hurt_boxes":
+        category = 2
+
+    if name in bones:
+        if "p" in extensions and len(vertices) <= 8:
+            print("hp %d %d %d " % (category, bones.index(name), len(vertices)), end="", file=obj_file)
+        if "s" in extensions:
+            print("hs %d %d " % (category, bones.index(name)), end="", file=obj_file)
+    else:
+        if "p" in extensions and len(vertices) <= 8:
+            print("hp %d -1 %d " % (category, len(vertices)), end="", file=obj_file)
+        if "s" in extensions:
+            print("hs %d -1 " % (category), end="", file=obj_file)
+
+    if "p" in extensions and len(vertices) <= 8:
+        for i in range(0, 8):
+            world_coords = opengl_mat @ (entity_mat @ vertices[i].co)
+            if i < 7:
+                print("%f %f %f" % (world_coords[0], world_coords[1], world_coords[2]), end=" ", file=obj_file)
+            elif len(vertices) == 8:
+                print("%f %f %f" % (world_coords[0], world_coords[1], world_coords[2]), end="\n", file=obj_file)
+            else:
+                print("0.0, 0.0, 0.0", end="\n", file=obj_file)
+    if "s" in extensions:
+        local_bbox_center = 0.125 * sum((mathutils.Vector(b) for b in object.bound_box), mathutils.Vector())
+        global_bbox_center = opengl_mat @ (entity_mat @ local_bbox_center)
+        world_coords = opengl_mat @ (entity_mat @ vertices[0].co)
+        radius = abs((global_bbox_center - world_coords).magnitude)
+        print("%f %f %f %f" % (global_bbox_center[0], global_bbox_center[1], global_bbox_center[2], radius), end="\n", file=obj_file)
+    # Write a single dof for the collider: a revolute joint about it's x axis
+    print("dof %d 1 1.0 0.0 0.0" % (cur_col), end="\n", file=obj_file)
+
+"""
 entity_origin: Entity origin in world space
 col_start: number of colliders serialized for entity
 collection: collection list to be serialized
@@ -186,51 +244,7 @@ def serialize_collider_collection(entity_origin, col_start, collection, bones, o
     cur_col = col_start
     for object in collection.all_objects:
         if object.type == 'MESH' :
-            vertices = object.data.vertices
-            # Ensure colliders are given in entity space
-            entity_mat = mathutils.Matrix.Translation(-entity_origin) @ object.matrix_world;
-            split = split_extensions(object.name)
-            name = split["name"]
-            extensions = split["extensions"]
-            if extensions[len(extensions) - 1] == "L" or extensions[len(extensions) - 1] == "R":
-                name = name + "." + extensions[len(extensions) - 1]
-
-            category = -1
-            if collection.name == "colliders":
-                category = 0
-            elif collection.name == "hit_boxes":
-                category = 1
-            elif collection.name == "hurt_boxes":
-                category = 2
-
-            if name in bones:
-                if "p" in extensions and len(vertices) <= 8:
-                    print("hp %d %d %d " % (category, bones.index(name), len(vertices)), end="", file=obj_file)
-                if "s" in extensions:
-                    print("hs %d %d " % (category, bones.index(name)), end="", file=obj_file)
-            else:
-                if "p" in extensions and len(vertices) <= 8:
-                    print("hp %d -1 %d " % (category, len(vertices)), end="", file=obj_file)
-                if "s" in extensions:
-                    print("hs %d -1 " % (category), end="", file=obj_file)
-
-            if "p" in extensions and len(vertices) <= 8:
-                for i in range(0, 8):
-                    world_coords = opengl_mat @ (entity_mat @ vertices[i].co)
-                    if i < 7:
-                        print("%f %f %f" % (world_coords[0], world_coords[1], world_coords[2]), end=" ", file=obj_file)
-                    elif len(vertices) == 8:
-                        print("%f %f %f" % (world_coords[0], world_coords[1], world_coords[2]), end="\n", file=obj_file)
-                    else:
-                        print("0.0, 0.0, 0.0", end="\n", file=obj_file)
-            if "s" in extensions:
-                local_bbox_center = 0.125 * sum((mathutils.Vector(b) for b in object.bound_box), mathutils.Vector())
-                global_bbox_center = opengl_mat @ (entity_mat @ local_bbox_center)
-                world_coords = opengl_mat @ (entity_mat @ vertices[0].co)
-                radius = abs((global_bbox_center - world_coords).magnitude)
-                print("%f %f %f %f" % (global_bbox_center[0], global_bbox_center[1], global_bbox_center[2], radius), end="\n", file=obj_file)
-            # Write a single dof for the collider: a revolute joint about it's x axis
-            print("dof %d 1 1.0 0.0 0.0" % (cur_col), end="\n", file=obj_file)
+            serialize_collider(cur_col, entity_origin, collection.name, object, bones, obj_file)
             cur_col = cur_col + 1
     return cur_col
 
@@ -323,7 +337,9 @@ def serialize_single_entity(filepath):
         collections = object.users_collection
         hit_box = False
         for collection in collections:
-            if collection.name == "colliders" or collection.name == "hit_boxes" or collection.name == "hurt_boxes":
+            cat_split = split_extensions(collection.name)
+            cat_name = cat_split["name"]
+            if cat_name == "colliders" or cat_name == "hit_boxes" or cat_name == "hurt_boxes":
                 hit_box = True
 
         # Output geometry data
@@ -334,7 +350,9 @@ def serialize_single_entity(filepath):
     cur_col = 0
     # Ouput collider data
     for collection in bpy.data.collections:
-        if collection.name == "colliders" or collection.name == "hit_boxes" or collection.name == "hurt_boxes":
+        cat_split = split_extensions(collection.name)
+        cat_name = cat_split["name"]
+        if cat_name == "colliders" or cat_name == "hit_boxes" or cat_name == "hurt_boxes":
             cur_col = serialize_collider_collection(entity_origin, cur_col, collection, bones, obj_file)
 
     for action in bpy.data.actions:

@@ -27,7 +27,7 @@ class ExportRiggedObj(Operator, ExportHelper):
         return entity.serialize_single_entity(self.filepath)
 
 
-class ExportScene(Operator, ExportHelper):
+class ExportScene(Operator):
     """Save a Wavefront OBJ file with all scene data"""
     bl_idname = "scene.export"
     bl_label = "Export Scene"

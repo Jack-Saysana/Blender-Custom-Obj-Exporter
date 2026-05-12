@@ -10,22 +10,28 @@ entity = bpy.data.texts["entity.py"].as_module()
 # Helpers
 # -----------------------------
 
-CHUNK_RE = re.compile(r"chunk_(\d+)")
-ENTITY_RE = re.compile(r"entity_(\d+)")
+CHUNK_RE = re.compile(r"chunk_(.+)")
+ENTITY_RE = re.compile(r"entity_(.+)")
 
 HITBOX_COLLECTION_NAMES = {"hit_boxes", "colliders", "hurt_boxes"}
 
 def clear_dir(folder):
     for filename in os.listdir(folder):
         file_path = os.path.join(folder, filename)
-        try:
-            if os.path.isfile(file_path) or os.path.islink(file_path):
-                os.unlink(file_path)
+        if os.path.isfile(file_path) or os.path.islink(file_path):
+            os.unlink(file_path)
 
 def get_collection_id(name, pattern):
-    match = pattern.match(name)
+    split = entity.split_extensions(name)
+    col_name = split["name"]
+    match = pattern.match(col_name)
     return int(match.group(1)) if match else None
 
+def get_entity_id(ents, name, pattern):
+    split = entity.split_extensions(name)
+    col_name = split["name"]
+    match = pattern.match(col_name)
+    return len(ents) if match else None
 
 def get_world_bounds(obj):
     """Returns (center, half_extents) in world space"""
@@ -55,15 +61,21 @@ def get_entity_definition(entity_collection):
 
     for child in entity_collection.children:
         name = child.name.lower()
+        split = entity.split_extensions(name)
+        cat_name = split["name"]
 
-        if name == "hit_boxes":
+        if cat_name == "hit_boxes":
             hit_boxes.extend([o for o in child.objects if o.type == 'MESH'])
-        elif name == "colliders":
+        elif cat_name == "colliders":
             colliders.extend([o for o in child.objects if o.type == 'MESH'])
-        elif name == "hurt_boxes":
+        elif cat_name == "hurt_boxes":
             hurt_boxes.extend([o for o in child.objects if o.type == 'MESH'])
 
+    split = entity.split_extensions(entity_collection.name)
+    col_name = split["name"]
+
     return {
+        "name": col_name,
         "geometry": geometry_obj,
         "hit_boxes": hit_boxes,
         "colliders": colliders,
@@ -82,7 +94,9 @@ def aggregate_scene():
 
         chunk_mesh_obj = None
         for obj in collection.objects:
-            if obj.name == collection.name and obj.type == 'MESH':
+            obj_split = entity.split_extensions(obj.name)
+            col_split = entity.split_extensions(collection.name)
+            if obj_split["name"] == col_split["name"] and obj.type == 'MESH':
                 chunk_mesh_obj = obj
                 break
 
@@ -95,16 +109,18 @@ def aggregate_scene():
         chunk_entry = {
             "id": chunk_id,
             "center": chunk_center,
-            "half_width": chunk_half,
+            "half_width": chunk_half.x,
             "entities": []
         }
 
         used_entity_ids = set()
 
         for obj in collection.all_objects:
-            if obj.instance_collection:
-                entity_col = obj.instance_collection
-                entity_id = get_collection_id(entity_col.name, ENTITY_RE)
+            if obj.users_collection:
+                print(f"{obj.users_collection[0].name}")
+                ent_col = obj.users_collection[0]
+                ent_name = ent_col.name
+                entity_id = get_entity_id(entity_registry, ent_name, ENTITY_RE)
 
                 if entity_id is None:
                     continue
@@ -112,7 +128,7 @@ def aggregate_scene():
                 used_entity_ids.add(entity_id)
 
                 if entity_id not in entity_registry:
-                    entity_registry[entity_id] = get_entity_definition(entity_col)
+                    entity_registry[entity_id] = get_entity_definition(ent_col)
 
                 loc, rot, scale = obj.matrix_world.decompose()
 
@@ -134,14 +150,14 @@ def aggregate_scene():
 
     return result
 
-def serialize_scene_entity(directory, name, entity):
-    obj_file = open(directory + "/" + name + ".obj", 'w', encoding='utf-8')
-    mtl_file = open(directory + "/" + name + ".mtl", 'w', encoding='utf-8')
+def serialize_scene_entity(directory, ent):
+    obj_file = open(directory + "/" + ent["name"] + ".obj", 'w', encoding='utf-8')
+    mtl_file = open(directory + "/" + ent["name"] + ".mtl", 'w', encoding='utf-8')
 
-    geometry = entity["geometry"]
-    hit_boxes = entity["hit_boxes"]
-    colliders = entity["colliders"]
-    hurt_boxes = entity["hurt_boxes"]
+    geometry = ent["geometry"]
+    hit_boxes = ent["hit_boxes"]
+    colliders = ent["colliders"]
+    hurt_boxes = ent["hurt_boxes"]
     armature = None
 
     entity_origin = Vector((0.0, 0.0, 0.0))
@@ -154,24 +170,32 @@ def serialize_scene_entity(directory, name, entity):
     elif len(hurt_boxes) > 0:
         entity_origin = hurt_boxes[0].matrix_world.translation
 
-    print("mtllib %s.mtl" % bpy.path.basename(filepath[0:-4]), file=obj_file)
+    basename = ent["name"]
+    print(f"mtllib {basename}.mtl", file=obj_file)
 
     bones = []
     if geometry is not None and geometry.parent and geometry.parent.type == 'ARMATURE':
         armature = geometry.parent
         for bone in armature.data.bones:
             if bone.parent == None:
-                traverse_armature(armature, entity_origin, bones, bone, Matrix.Identity(3), -1, obj_file)
+                entity.traverse_armature(armature, entity_origin, bones, bone, Matrix.Identity(3), -1, obj_file)
 
     if geometry is not None:
-        serialize_mesh(Matrix.Identity(4), geometry, bones, obj_file, mtl_file)
+        entity.serialize_mesh(Matrix.Identity(4), geometry, bones, obj_file, mtl_file)
     print("", file=obj_file)
 
     # Ouput collider data
     cur_col = 0
-    cur_col = serialize_collider_collection(entity_origin, cur_col, hit_boxes, bones, obj_file)
-    cur_col = serialize_collider_collection(entity_origin, cur_col, colliders, bones, obj_file)
-    cur_col = serialize_collider_collection(entity_origin, cur_col, hurt_boxes, bones, obj_file)
+    # TODO THESE ARENT COLLECTIONS
+    for hb in hit_boxes:
+        entity.serialize_collider(cur_col, entity_origin, "hit_boxes", hb, bones, obj_file)
+        cur_col = cur_col + 1
+    for cb in colliders:
+        entity.serialize_collider(cur_col, entity_origin, "colliders", cb, bones, obj_file)
+        cur_col = cur_col + 1
+    for hb in hurt_boxes:
+        entity.serialize_collider(cur_col, entity_origin, "hurt_boxes", hb, bones, obj_file)
+        cur_col = cur_col + 1
 
     # TODO Figure out world_mat and getting actions of entity
     #for action in bpy.data.actions:
@@ -183,26 +207,26 @@ def serialize_scene_entity(directory, name, entity):
     return {'FINISHED'}
 
 def serialize_chunk_metadata(directory, chunks):
-    open(directory + "/md.bin") as md_file:
+    with open(directory + "/md.bin", "wb") as md_file:
         num_chunks = struct.pack("<Q", len(chunks))
         md_file.write(num_chunks)
         for chunk in chunks:
             chunk_origin = chunk["center"]
             chunk_size = chunk["half_width"]
-            phys_data = struct.pack("<ffff", chunk_origin.x, chunk_origin.y, chunk_origin.z, chunk_size)
+            phys_data = struct.pack("<ffff", chunk_origin.x, chunk_origin.y, chunk_origin.z, float(chunk_size))
             md_file.write(phys_data)
             # Neighbors will have to be manually calculated in map editor
-            md_file.write(b"\x00" * num_chunks)
+            md_file.write(b"\x00" * len(chunks))
 
 def serialize_chunk(directory, chunk_id, chunk, entity_data):
-    open(directory + "/" + chunk_id + ".bin") as chunk_file:
+    with open(directory + f"/{chunk_id}.bin", "wb") as chunk_file:
         entities = chunk["entities"]
         # Nav mesh added in map editor
         nav_data = struct.pack("<QQ", 0, 0)
         # NPCs added in map editor
         num_npcs = struct.pack("<Q", 0)
         num_sps = struct.pack("<Q", len(entities))
-        md_file.write(nav_data + num_npcs + num_sps)
+        chunk_file.write(nav_data + num_npcs + num_sps)
         for entity in entities:
             l = entity["loc"]
             r = entity["rot"]
@@ -212,9 +236,9 @@ def serialize_chunk(directory, chunk_id, chunk, entity_data):
             scale = struct.pack("<fff", s.x, s.y, s.z)
             # Entity mass manually set in map editor
             inv_mass = struct.pack("<f", 0)
-            model_id = list(entitiy_data).index(entity["entity_id"])
-            md_file.write(rot + loc + scale)
-            md_file.write(struct.pack("<i", model_id) + inv_mass)
+            model_id = list(entity_data).index(entity["entity_id"])
+            chunk_file.write(rot + loc + scale)
+            chunk_file.write(struct.pack("<i", model_id) + inv_mass)
 
 def serialize_scene(dir_path):
     scene_data = aggregate_scene()
@@ -231,8 +255,10 @@ def serialize_scene(dir_path):
     clear_dir(entity_dir)
 
     for entity_id in entities:
-        serialize_scene_entity(entity_dir, entity_id, entities[entity_id])
+        serialize_scene_entity(entity_dir, entities[entity_id])
 
     serialize_chunk_metadata(chunk_dir, chunks)
-    for index, chunk in enumaerate(chunks):
+    for index, chunk in enumerate(chunks):
         serialize_chunk(chunk_dir, index, chunk, entities)
+
+    return {'FINISHED'}
