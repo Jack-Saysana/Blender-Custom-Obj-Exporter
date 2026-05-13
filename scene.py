@@ -6,12 +6,12 @@ from mathutils import Vector
 from mathutils import Matrix
 entity = bpy.data.texts["entity.py"].as_module()
 
-# -----------------------------
-# Helpers
-# -----------------------------
-
 CHUNK_RE = re.compile(r"chunk_(.+)")
 ENTITY_RE = re.compile(r"entity_(.+)")
+MODEL_ID_BASE = 8
+
+OPENGL_MAT = entity.opengl_mat
+OPENGL_MAT_4 = OPENGL_MAT.to_4x4()
 
 HITBOX_COLLECTION_NAMES = {"hit_boxes", "colliders", "hurt_boxes"}
 
@@ -27,11 +27,11 @@ def get_collection_id(name, pattern):
     match = pattern.match(col_name)
     return int(match.group(1)) if match else None
 
-def get_entity_id(ents, name, pattern):
+def get_entity_id(name, pattern):
     split = entity.split_extensions(name)
     col_name = split["name"]
     match = pattern.match(col_name)
-    return len(ents) if match else None
+    return col_name if match else None
 
 def get_world_bounds(obj):
     """Returns (center, half_extents) in world space"""
@@ -44,7 +44,7 @@ def get_world_bounds(obj):
                          max(v.z for v in bbox)))
     center = (min_corner + max_corner) / 2.0
     half_extents = (max_corner - min_corner) / 2.0
-    return center, half_extents
+    return OPENGL_MAT @ center, OPENGL_MAT @ half_extents
 
 
 def get_entity_definition(entity_collection):
@@ -117,10 +117,9 @@ def aggregate_scene():
 
         for obj in collection.all_objects:
             if obj.users_collection:
-                print(f"{obj.users_collection[0].name}")
                 ent_col = obj.users_collection[0]
                 ent_name = ent_col.name
-                entity_id = get_entity_id(entity_registry, ent_name, ENTITY_RE)
+                entity_id = get_entity_id(ent_name, ENTITY_RE)
 
                 if entity_id is None:
                     continue
@@ -130,7 +129,8 @@ def aggregate_scene():
                 if entity_id not in entity_registry:
                     entity_registry[entity_id] = get_entity_definition(ent_col)
 
-                loc, rot, scale = obj.matrix_world.decompose()
+                mat = OPENGL_MAT_4 @ obj.matrix_world @ OPENGL_MAT_4.transposed()
+                loc, rot, scale = mat.decompose()
 
                 chunk_entry["entities"].append({
                     "entity_id": entity_id,
@@ -141,7 +141,6 @@ def aggregate_scene():
 
         chunk_entry["used_entity_ids"] = list(used_entity_ids)
         chunks_data.append(chunk_entry)
-
 
     result = {
         "chunks": chunks_data,
@@ -186,7 +185,6 @@ def serialize_scene_entity(directory, ent):
 
     # Ouput collider data
     cur_col = 0
-    # TODO THESE ARENT COLLECTIONS
     for hb in hit_boxes:
         entity.serialize_collider(cur_col, entity_origin, "hit_boxes", hb, bones, obj_file)
         cur_col = cur_col + 1
@@ -236,7 +234,7 @@ def serialize_chunk(directory, chunk_id, chunk, entity_data):
             scale = struct.pack("<fff", s.x, s.y, s.z)
             # Entity mass manually set in map editor
             inv_mass = struct.pack("<f", 0)
-            model_id = list(entity_data).index(entity["entity_id"])
+            model_id = list(entity_data).index(entity["entity_id"]) + MODEL_ID_BASE
             chunk_file.write(rot + loc + scale)
             chunk_file.write(struct.pack("<i", model_id) + inv_mass)
 
