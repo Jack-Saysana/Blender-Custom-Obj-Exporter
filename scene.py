@@ -150,8 +150,10 @@ def aggregate_scene():
     return result
 
 def serialize_scene_entity(directory, ent):
-    obj_file = open(directory + "/" + ent["name"] + ".obj", 'w', encoding='utf-8')
-    mtl_file = open(directory + "/" + ent["name"] + ".mtl", 'w', encoding='utf-8')
+    ent_name = ent["name"].removeprefix("entity_")
+    os.makedirs(f"{directory}/{ent_name}", exist_ok=True)
+    obj_file = open(f"{directory}/{ent_name}/{ent_name}.obj", 'w', encoding='utf-8')
+    mtl_file = open(f"{directory}/{ent_name}/{ent_name}.mtl", 'w', encoding='utf-8')
 
     geometry = ent["geometry"]
     hit_boxes = ent["hit_boxes"]
@@ -169,8 +171,7 @@ def serialize_scene_entity(directory, ent):
     elif len(hurt_boxes) > 0:
         entity_origin = hurt_boxes[0].matrix_world.translation
 
-    basename = ent["name"]
-    print(f"mtllib {basename}.mtl", file=obj_file)
+    print(f"mtllib {ent_name}.mtl", file=obj_file)
 
     bones = []
     if geometry is not None and geometry.parent and geometry.parent.type == 'ARMATURE':
@@ -258,5 +259,8 @@ def serialize_scene(dir_path):
     serialize_chunk_metadata(chunk_dir, chunks)
     for index, chunk in enumerate(chunks):
         serialize_chunk(chunk_dir, index, chunk, entities)
+
+    for idx, ent in enumerate(list(entities)):
+        print(f"{ent} => {idx}")
 
     return {'FINISHED'}
