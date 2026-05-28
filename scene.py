@@ -237,7 +237,7 @@ def serialize_chunk(directory, chunk_id, chunk, entity_data):
             inv_mass = struct.pack("<f", 0)
             model_id = list(entity_data).index(entity["entity_id"]) + MODEL_ID_BASE
             chunk_file.write(rot + loc + scale)
-            chunk_file.write(struct.pack("<i", model_id) + inv_mass)
+            chunk_file.write(struct.pack("<ii", model_id, -1) + inv_mass)
 
 def serialize_scene(dir_path):
     scene_data = aggregate_scene()
