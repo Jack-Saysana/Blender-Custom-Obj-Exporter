@@ -87,9 +87,12 @@ obj_file: output object file
 mtl_file: output material file
 """
 def serialize_mesh(entity_mat, object, bones, obj_file, mtl_file):
+    print(f"-> MESH: Serializing {object.name}")
     if object is None or obj_file is None or mtl_file is None:
         print(f"serialize_mesh: Invalid args -> object: {object}, obj_file: {obj_file}, mtl_file: {mtl_file}")
         return
+
+    apply_rotation_and_scale(object)
 
     mesh_data = object.data
     group_list = object.vertex_groups
@@ -183,11 +186,14 @@ bones: list of bone names
 obj_file: output object file
 """
 def serialize_collider(cur_col, entity_origin, col_name, object, bones, obj_file):
+    apply_rotation_and_scale(object)
+
     vertices = object.data.vertices
     # Ensure colliders are given in entity space
     entity_mat = mathutils.Matrix.Translation(-entity_origin) @ object.matrix_world;
     split = split_extensions(object.name)
     name = split["name"]
+    print(f"-> COLLIDER: Serializing {object.name} in {col_name}")
     extensions = split["extensions"]
     if "L" in extensions:
         name = name + ".L"
@@ -362,3 +368,33 @@ def serialize_single_entity(filepath):
     mtl_file.close()
 
     return {'FINISHED'}
+
+def apply_rotation_and_scale(obj):
+    # Save the current selection state
+    selected_objects = list(bpy.context.selected_objects)
+    active_object = bpy.context.view_layer.objects.active
+
+    try:
+        # Make only the target object selected and active
+        bpy.ops.object.select_all(action='DESELECT')
+        obj.select_set(True)
+        bpy.context.view_layer.objects.active = obj
+
+        # Apply rotation and scale only
+        bpy.ops.object.transform_apply(
+            location=False,
+            rotation=True,
+            scale=True
+        )
+
+    finally:
+        # Restore the previous selection state
+        bpy.ops.object.select_all(action='DESELECT')
+
+        for selected_obj in selected_objects:
+            if selected_obj and selected_obj.name in bpy.data.objects:
+                selected_obj.select_set(True)
+
+        # Restore the previous active object
+        if active_object and active_object.name in bpy.data.objects:
+            bpy.context.view_layer.objects.active = active_object

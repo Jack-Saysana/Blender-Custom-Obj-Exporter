@@ -150,6 +150,7 @@ def aggregate_scene():
     return result
 
 def serialize_scene_entity(directory, ent):
+    print(f"Serializing {ent['name']}")
     ent_name = ent["name"].removeprefix("entity_")
     os.makedirs(f"{directory}/{ent_name}", exist_ok=True)
     obj_file = open(f"{directory}/{ent_name}/{ent_name}.obj", 'w', encoding='utf-8')
