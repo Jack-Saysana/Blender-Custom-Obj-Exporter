@@ -44,6 +44,24 @@ class ExportScene(Operator):
     def invoke(self, context, event):
         context.window_manager.fileselect_add(self)
         return {'RUNNING_MODAL'}
+    
+class ExportSceneEntity(Operator):
+    """Save a Wavefront OBJ file with all scene data"""
+    bl_idname = "scene_ent.export"
+    bl_label = "Export Scene Entity"
+
+    directory: StringProperty(
+        name="Output Directory",
+        description="Directory to export scene entity into",
+        subtype='DIR_PATH'
+    )
+
+    def execute(self, context):
+        return scene.serialize_single_scene_ent(self.directory)
+
+    def invoke(self, context, event):
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}
 
 # Only needed if you want to add into a dynamic menu
 def menu_func_export_entity(self, context):
@@ -52,17 +70,24 @@ def menu_func_export_entity(self, context):
 def menu_func_export_scene(self, context):
     self.layout.operator(ExportScene.bl_idname, text="Wavefront (scene) (.obj)")
 
+def menu_func_export_scene_ent(self, context):
+    self.layout.operator(ExportSceneEntity.bl_idname, text="Wavefront (scene ent) (.obj)")
+
 def register():
     bpy.utils.register_class(ExportRiggedObj)
     bpy.utils.register_class(ExportScene)
+    bpy.utils.register_class(ExportSceneEntity)
     bpy.types.TOPBAR_MT_file_export.append(menu_func_export_entity)
     bpy.types.TOPBAR_MT_file_export.append(menu_func_export_scene)
+    bpy.types.TOPBAR_MT_file_export.append(menu_func_export_scene_ent)
 
 def unregister():
     bpy.utils.unregister_class(ExportRiggedObj)
     bpy.utils.unregister_class(ExportScene)
-    bpy.types.TOPBAR_MT_file_export.remove(menu_func_export)
-    bpy.types.TOPBAR_MT_file_export.remove(menu_func_scene)
+    bpy.utils.unregister_class(ExportSceneEntity)
+    bpy.types.TOPBAR_MT_file_export.remove(menu_func_export_entity)
+    bpy.types.TOPBAR_MT_file_export.remove(menu_func_export_scene)
+    bpy.types.TOPBAR_MT_file_export.remove(menu_func_export_scene_ent)
 
 if __name__ == "__main__":
     register()

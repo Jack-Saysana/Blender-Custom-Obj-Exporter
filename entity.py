@@ -210,6 +210,7 @@ def serialize_collider(cur_col, entity_origin, col_name, object, bones, obj_file
     elif cat_name == "hurt_boxes":
         category = 2
 
+    print(f"# {object.name}", file=obj_file)
     if name in bones:
         if "p" in extensions and len(vertices) <= 8:
             print("hp %d %d %d " % (category, bones.index(name), len(vertices)), end="", file=obj_file)

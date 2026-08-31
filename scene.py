@@ -265,3 +265,23 @@ def serialize_scene(dir_path):
         print(f"{ent} => {idx}")
 
     return {'FINISHED'}
+
+def serialize_single_scene_ent(dir_path):
+    scene_data = aggregate_scene()
+    
+    entities = scene_data["entities"]
+
+    entity_dir = dir_path + "/entities"
+    os.makedirs(entity_dir, exist_ok=True)
+    clear_dir(entity_dir)
+    
+    collection = bpy.context.view_layer.active_layer_collection.collection
+    entity_id = get_entity_id(collection.name, ENTITY_RE)
+    print(f"Exporting {entity_id}...")
+    
+    if entity_id is not None:
+        for ent in entities:
+            if ent == entity_id:
+                serialize_scene_entity(entity_dir, entities[entity_id])
+    
+    return {'FINISHED'}
