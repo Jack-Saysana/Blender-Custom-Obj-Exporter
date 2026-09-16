@@ -207,38 +207,48 @@ def serialize_scene_entity(directory, ent):
     return {'FINISHED'}
 
 def serialize_chunk_metadata(directory, chunks):
-    with open(directory + "/md.bin", "wb") as md_file:
-        num_chunks = struct.pack("<Q", len(chunks))
-        md_file.write(num_chunks)
+    with open(directory + "/md.chunk", "w") as md_file:
+        # num_chunks = struct.pack("<Q", len(chunks))
+        # md_file.write(num_chunks)
+        print(f"{len(chunks)}", file=md_file)
         for chunk in chunks:
             chunk_origin = chunk["center"]
             chunk_size = chunk["half_width"]
-            phys_data = struct.pack("<ffff", chunk_origin.x, chunk_origin.y, chunk_origin.z, float(chunk_size))
-            md_file.write(phys_data)
+            # phys_data = struct.pack("<ffff", chunk_origin.x, chunk_origin.y, chunk_origin.z, float(chunk_size))
+            # md_file.write(phys_data)
+            print(f"{chunk_origin.x} {chunk_origin.y} {chunk_origin.z}", file=md_file)
+            print(f"{chunk_size}", file=md_file)
             # Neighbors will have to be manually calculated in map editor
-            md_file.write(b"\x00" * len(chunks))
+            # md_file.write(b"\x00" * len(chunks))
+            for i in range(len(chunks)):
+                print("0", file=md_file)
 
 def serialize_chunk(directory, chunk_id, chunk, entity_data):
-    with open(directory + f"/{chunk_id}.bin", "wb") as chunk_file:
+    with open(directory + f"/{chunk_id}.chunk", "w") as chunk_file:
         entities = chunk["entities"]
         # Nav mesh added in map editor
-        nav_data = struct.pack("<QQ", 0, 0)
+        # nav_data = struct.pack("<QQ", 0, 0)
+        print("0", file=chunk_file)
+        print("0", file=chunk_file)
         # NPCs added in map editor
-        num_npcs = struct.pack("<Q", 0)
-        num_sps = struct.pack("<Q", len(entities))
-        chunk_file.write(nav_data + num_npcs + num_sps)
+        # num_npcs = struct.pack("<Q", 0)
+        print("0", file=chunk_file)
+        # num_sps = struct.pack("<Q", len(entities))
+        print(f"{len(entities)}", file=chunk_file)
+        # chunk_file.write(nav_data + num_npcs + num_sps)
         for entity in entities:
             l = entity["loc"]
             r = entity["rot"]
             s = entity["scale"]
-            loc = struct.pack("<fff", l.x, l.y, l.z)
-            rot = struct.pack("<ffff", r.x, r.y, r.z, r.w)
-            scale = struct.pack("<fff", s.x, s.y, s.z)
+            # rot = struct.pack("<ffff", r.x, r.y, r.z, r.w)
+            # loc = struct.pack("<fff", l.x, l.y, l.z)
+            # scale = struct.pack("<fff", s.x, s.y, s.z)
             # Entity mass manually set in map editor
-            inv_mass = struct.pack("<f", 0)
+            # inv_mass = struct.pack("<f", 0)
             model_id = list(entity_data).index(entity["entity_id"]) + MODEL_ID_BASE
-            chunk_file.write(rot + loc + scale)
-            chunk_file.write(struct.pack("<ii", model_id, -1) + inv_mass)
+            print(f"{r.x} {r.y} {r.z} {r.w} {l.x} {l.y} {l.z} {s.x} {s.y} {s.z} {model_id} -1 0.0", file=chunk_file)
+            # chunk_file.write(rot + loc + scale)
+            # chunk_file.write(struct.pack("<ii", model_id, -1) + inv_mass)
 
 def serialize_scene(dir_path):
     scene_data = aggregate_scene()
