@@ -45,7 +45,18 @@ def split_extensions(name):
 def compare_group(group):
     return group.weight
 
-# matrix to transform blender world coordinates to opengl's coordinate system
+# Blender -> OpenGL coordinate conversion.
+#
+# Blender:
+#       X = X
+#       Y = Y
+#       Z = Z
+#
+# OpenGL engine:
+#       X' = Y
+#       Y' = Z
+#       Z' = X
+#
 opengl_mat = mathutils.Matrix([(0.0, 1.0, 0.0), (0.0, 0.0, 1.0), (1.0, 0.0, 0.0)])
 
 """
@@ -159,6 +170,11 @@ def serialize_mesh(entity_mat, object, bones, obj_file, mtl_file):
                             for l in material.node_tree.links:
                                 if (l.to_socket == input and l.from_node.bl_idname == 'ShaderNodeTexImage'):
                                     print("map_Ks %s" % (bpy.path.basename(l.from_node.image.filepath)), file=mtl_file)
+                                    break
+                        elif (input.name == 'Normal'):
+                            for l in material.node_tree.links:
+                                if (l.to_socket == input and l.from_node.bl_idname == 'ShaderNodeTexImage'):
+                                    print("norm %s" % (bpy.path.basename(l.from_node.image.filepath)), file=mtl_file)
                                     break
             break
         print("usemtl %s" % (material.name), file=obj_file)
@@ -303,6 +319,7 @@ def serialize_action(action, bones, obj_file):
                 world_offset[0] = world_mat[0][3]
                 world_offset[1] = world_mat[1][3]
                 world_offset[2] = world_mat[2][3]
+                
             elif chain_data[1] == ".rotation_quaternion":
                 local_offset_vector = mathutils.Vector((offset[1], offset[2], offset[3], 1))
                 world_offset_vector = local_point_mat @ local_offset_vector
@@ -312,6 +329,7 @@ def serialize_action(action, bones, obj_file):
                 world_offset[1] = world_quat.x
                 world_offset[2] = world_quat.y
                 world_offset[3] = world_quat.z
+
             elif chain_data[1] == ".scale":
                 world_offset_vector = local_point_mat @ mathutils.Vector((offset[0] - 1.0, offset[1] - 1.0, offset[2] - 1.0, 1.0))
                 world_offset[0] = world_offset_vector[0] + 1.0
@@ -335,7 +353,15 @@ def serialize_single_entity(filepath):
     bones = []
     entity_origin = mathutils.Vector((0.0, 0.0, 0.0))
     for object in bpy.data.objects:
-        if object.type == 'ARMATURE':
+        collections = object.users_collection
+        ent = False
+        for collection in collections:
+            cat_split = split_extensions(collection.name)
+            cat_name = cat_split["name"]
+            if cat_name == "entity":
+                ent = True
+                
+        if object.type == 'ARMATURE' and ent == True:
             for bone in object.data.bones:
                 if bone.parent == None:
                     traverse_armature(object, entity_origin, bones, bone, mathutils.Matrix.Identity(3), -1, obj_file)
@@ -343,14 +369,17 @@ def serialize_single_entity(filepath):
     for object in bpy.data.objects:
         collections = object.users_collection
         hit_box = False
+        ent = False
         for collection in collections:
             cat_split = split_extensions(collection.name)
             cat_name = cat_split["name"]
             if cat_name == "colliders" or cat_name == "hit_boxes" or cat_name == "hurt_boxes":
                 hit_box = True
+            elif cat_name == "entity":
+                ent = True
 
         # Output geometry data
-        if object.type == 'MESH' and hit_box == False:
+        if object.type == 'MESH' and ent == True:
             serialize_mesh(object.matrix_world, object, bones, obj_file, mtl_file)
     print("", file=obj_file)
 
@@ -362,8 +391,12 @@ def serialize_single_entity(filepath):
         if cat_name == "colliders" or cat_name == "hit_boxes" or cat_name == "hurt_boxes":
             cur_col = serialize_collider_collection(entity_origin, cur_col, collection, bones, obj_file)
 
+    print("Serializing animations...")
+    cur = 0
     for action in bpy.data.actions:
+        print(f"#define {action.name_full.upper()} ({cur})")
         serialize_action(action, bones, obj_file)
+        cur = cur + 1
 
     obj_file.close()
     mtl_file.close()
